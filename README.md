@@ -165,6 +165,21 @@ Or simply run:
 
 ---
 
+## 💻 System Requirements
+
+| | Minimum |
+|---|---|
+| **OS** | Windows 10 / 11 (x64) |
+| **RAM** | 4 GB |
+| **Disk** | ~200 KB for the EXE + space for compressed output |
+| **Runtime** | PowerShell 5.1 (built into Windows 10/11) |
+| **FFmpeg** | Auto-installed via winget if missing |
+| **Internet** | Only needed once for FFmpeg auto-install |
+
+> 💡 No GPU required — encoding is CPU-based (x264). Any modern CPU works fine; faster CPU = faster encoding.
+
+---
+
 ## 🔧 Troubleshooting
 
 | Issue | Solution |
