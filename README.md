@@ -7,7 +7,10 @@
 [![Telegram](https://img.shields.io/badge/Telegram-Join%20Community-2CA5E0?logo=telegram)](https://t.me/voogieboogie)
 
 <div align="center">
-  <img src="assets/demo.gif" alt="Chucha Video Compressor" width="100%">
+  <table><tr>
+    <td width="50%"><img src="assets/demo.gif" alt="Chucha Video Compressor" width="100%"></td>
+    <td width="50%"><img src="assets/screenshot.jpg" alt="Chucha Video Compressor UI" width="100%"></td>
+  </tr></table>
 </div>
 
 > **The fastest way to batch-compress videos to a target file size — no professional software needed. Just double-click and go.**
@@ -17,12 +20,6 @@ Free, portable, single-file `.exe` tool for Windows. Compresses any number of vi
 **Download `VideoCompressor.exe` → double-click → select folder → done.** That's it. No installation, no accounts, no subscriptions.
 
 **Author:** Voogie | **Project:** Cameraptor | [cameraptor.com/voogie](https://cameraptor.com/voogie)
-
----
-
-<div align="center">
-  <img src="assets/screenshot.jpg" alt="Chucha Video Compressor UI" width="420">
-</div>
 
 ---
 
