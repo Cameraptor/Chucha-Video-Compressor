@@ -1,0 +1,4 @@
+ffmpeg2pass*
+*.log
+*.log.mbtree
+Compressed/
