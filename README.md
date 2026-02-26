@@ -17,6 +17,8 @@
 
 Free, portable, single-file `.exe` tool for Windows. Compresses any number of video files to a precise size limit using 2-pass H.264 encoding via x264 — the same encoder used by Netflix, YouTube, and professional studios. Produces significantly better visual quality at low bitrates compared to Adobe Media Encoder.
 
+Point it at any folder — even with dozens of subfolders and mixed file types — and it will find every video, compress it to your target size, and mirror the entire folder structure in the output. No manual file picking, no drag-and-drop queues. One folder, one click, all done.
+
 **Download `VideoCompressor.exe` → double-click → select folder → done.** That's it. No installation, no accounts, no subscriptions.
 
 **Author:** Voogie | **Project:** Cameraptor | [cameraptor.com/voogie](https://cameraptor.com/voogie)
