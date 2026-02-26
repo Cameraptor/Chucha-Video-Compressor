@@ -22,6 +22,10 @@ Point it at any folder — even with dozens of subfolders and mixed file types �
 
 **Download → double-click → select folder → done.** That's it. No installation, no accounts, no subscriptions.
 
+> 🍎 **macOS version available** — same compression engine, same quality, same one-click workflow. The Mac version runs in Terminal with native macOS dialogs instead of a graphical window. The encoding core is identical — the only difference is the interface.
+>
+> *Why no GUI on Mac? Building a native macOS app requires Xcode, Apple Developer signing ($99/year), and notarization — turning a 20 KB script into a 10 MB bundle with distribution hurdles. A `.command` file keeps the same philosophy: one file, double-click, done.*
+
 **Author:** Voogie | **Project:** Cameraptor | [cameraptor.com/voogie](https://cameraptor.com/voogie)
 
 ---
