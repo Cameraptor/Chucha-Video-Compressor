@@ -7,7 +7,7 @@
 [![Telegram](https://img.shields.io/badge/Telegram-Join%20Community-2CA5E0?logo=telegram)](https://t.me/voogieboogie)
 
 <div align="center">
-  <img src="assets/cover.png" alt="Chucha Video Compressor" width="256">
+  <img src="assets/demo.gif" alt="Chucha Video Compressor" width="320">
 </div>
 
 > **The fastest way to batch-compress videos to a target file size — no professional software needed. Just double-click and go.**
