@@ -3,6 +3,7 @@
 [![GitHub](https://img.shields.io/badge/GitHub-Cameraptor-blue?logo=github)](https://github.com/Cameraptor/Chucha-Video-Compressor)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Windows](https://img.shields.io/badge/Windows-10%2F11-0078D6?logo=windows)](https://github.com/Cameraptor/Chucha-Video-Compressor/releases)
+[![macOS](https://img.shields.io/badge/macOS-Intel%20%26%20Apple%20Silicon-000000?logo=apple)](https://github.com/Cameraptor/Chucha-Video-Compressor/releases)
 [![Free](https://img.shields.io/badge/Price-Free-brightgreen)]()
 [![Telegram](https://img.shields.io/badge/Telegram-Join%20Community-2CA5E0?logo=telegram)](https://t.me/voogieboogie)
 
@@ -15,11 +16,11 @@
 
 > **The fastest way to batch-compress videos to a target file size — no professional software needed. Just double-click and go.**
 
-Free, portable, single-file `.exe` tool for Windows. Compresses any number of video files to a precise size limit using 2-pass H.264 encoding via x264 — the same encoder used by Netflix, YouTube, and professional studios. Produces significantly better visual quality at low bitrates compared to Adobe Media Encoder.
+Free, portable, single-file tool for **Windows** (`.exe`) and **macOS** (`.command`). Compresses any number of video files to a precise size limit using 2-pass H.264 encoding via x264 — the same encoder used by Netflix, YouTube, and professional studios. Produces significantly better visual quality at low bitrates compared to Adobe Media Encoder.
 
 Point it at any folder — even with dozens of subfolders and mixed file types — and it will find every video, compress it to your target size, and mirror the entire folder structure in the output. No manual file picking, no drag-and-drop queues. One folder, one click, all done.
 
-**Download `VideoCompressor.exe` → double-click → select folder → done.** That's it. No installation, no accounts, no subscriptions.
+**Download → double-click → select folder → done.** That's it. No installation, no accounts, no subscriptions.
 
 **Author:** Voogie | **Project:** Cameraptor | [cameraptor.com/voogie](https://cameraptor.com/voogie)
 
@@ -35,7 +36,8 @@ Point it at any folder — even with dozens of subfolders and mixed file types �
 | 🆚 **Better Than AME** | x264 encoder is ~20% more efficient than Adobe's MainConcept at low bitrates |
 | 📐 **Resolution Control** | Set max long-side resolution (e.g. 1270 px) to further reduce file size |
 | 💰 **100% Free** | No subscriptions, no accounts, no trials. MIT license, open source. |
-| 📁 **Single EXE** | One file. No installation. Just download and run. Auto-installs FFmpeg if missing. |
+| 📁 **Single File** | One file per platform. No installation. Just download and run. Auto-installs FFmpeg if missing. |
+| 🍎 **Windows + macOS** | Native versions for both platforms — `.exe` for Windows, `.command` for Mac |
 | 🛡️ **Safe Processing** | Originals are never touched — output goes to a `Compressed/` subfolder |
 | ⏹️ **STOP Button** | Cancel at any time without corrupting files |
 | 🔍 **Pre-flight Analyzer** | Warns you before encoding if a file can't physically fit in your size limit |
@@ -62,22 +64,33 @@ Adobe Media Encoder defaults to **VBR 1 Pass** encoding with its built-in **Main
 | **Target file size** | Unreliable — often overshoots by 5–10x | Precise — hits target consistently |
 | **Min achievable size** | ~5 MB floor | No floor — goes as low as needed |
 | **Batch processing** | Manual queue, one file at a time | One-click folder scan with subfolders |
-| **Setup** | Creative Cloud subscription ($55/month) | Free. Single `.exe`. No install. |
+| **Setup** | Creative Cloud subscription ($55/month) | Free. Single file. No install. Windows + macOS. |
 | **Encoding speed** | 2-pass is ~4x slower than ffmpeg | Fast 2-pass via optimized x264 |
 
 ---
 
 ## 📦 Download
 
-> **You only need one file — `VideoCompressor.exe`. That's it.**
+> **You only need one file. That's it.**
+
+### Windows
 
 1. Download **`VideoCompressor.exe`** from [Releases](https://github.com/Cameraptor/Chucha-Video-Compressor/releases)
 2. Put it anywhere on your PC
 3. Double-click to launch
 
-No installation. No dependencies to manage. No accounts.
+> 💡 **FFmpeg:** Auto-detects FFmpeg on your system. If not found, installs it automatically via `winget`.
 
-> 💡 **FFmpeg:** The tool auto-detects FFmpeg on your system (checks PATH, common install locations, winget packages). If not found, it installs it automatically via `winget` — you don't need to do anything.
+### macOS
+
+1. Download **`chucha-compress.command`** from [Releases](https://github.com/Cameraptor/Chucha-Video-Compressor/releases)
+2. Put it anywhere on your Mac
+3. Double-click to launch in Terminal
+4. If macOS blocks it: right-click → Open, or run `chmod +x chucha-compress.command`
+
+> 💡 **FFmpeg:** Auto-detects FFmpeg. If not found, installs it via [Homebrew](https://brew.sh). Settings are configured through native macOS dialogs; progress is shown in Terminal.
+
+No installation. No dependencies to manage. No accounts.
 
 ---
 
@@ -122,61 +135,57 @@ video_bitrate = video_budget / duration   (min 80 kbps)
 
 ## 🛠️ Building from Source
 
-The tool is a PowerShell WinForms application compiled to `.exe` via PS2EXE.
+### Windows
 
-### Prerequisites
+The Windows version is a PowerShell WinForms application compiled to `.exe` via PS2EXE.
 
-- Windows 10/11 with PowerShell 5.1+
-- FFmpeg installed and in PATH
-
-### Compile
-
-```powershell
-. .\ps2exe.ps1
-Invoke-ps2exe .\VideoCompressor.ps1 .\VideoCompressor.exe `
-    -noConsole -iconFile .\compressor.ico `
-    -title 'Chucha Video Compressor' `
-    -company 'CAMERAPTOR' `
-    -copyright 'Voogie / cameraptor.com'
-```
-
-Or simply run:
+**Prerequisites:** Windows 10/11 with PowerShell 5.1+, FFmpeg in PATH.
 
 ```powershell
 .\compile.ps1
 ```
 
+### macOS
+
+The Mac version is a standalone bash script — no compilation needed. Just make it executable:
+
+```bash
+chmod +x chucha-compress.command
+```
+
 ### Source Structure
 
-| File | Description |
-|------|-------------|
-| `VideoCompressor.ps1` | Main application — WinForms GUI + FFmpeg logic |
-| `ps2exe.ps1` | PS2EXE compiler (converts PS1 to standalone EXE) |
-| `compile.ps1` | One-click build script |
-| `compressor.ico` | Application icon (16/32/48/256 px) |
+| File | Platform | Description |
+|------|----------|-------------|
+| `VideoCompressor.ps1` | Windows | Main application — WinForms GUI + FFmpeg logic |
+| `chucha-compress.command` | macOS | Terminal app — osascript dialogs + FFmpeg logic |
+| `ps2exe.ps1` | Windows | PS2EXE compiler (converts PS1 to standalone EXE) |
+| `compile.ps1` | Windows | One-click build script |
+| `compressor.ico` | Windows | Application icon (16/32/48/256 px) |
 
 ---
 
 ## 🛡️ Technical Notes
 
 - **x264 encoder** — the most efficient H.264 encoder available, used by Netflix, YouTube, and Handbrake. Consistently outperforms MainConcept (Adobe) and QuickSync (Intel) at low bitrates.
-- **No pipes:** FFmpeg runs without stdout/stderr redirection to avoid deadlocks in the PS2EXE runtime. Progress is tracked via `-progress <tempfile>`.
 - **mbtree disabled:** x264's MB-tree feature is turned off (`mbtree=0`) to prevent incomplete stats files that corrupt output on certain clips.
-- **Explicit passlogfile:** 2-pass log files use explicit temp paths instead of relying on the working directory, avoiding CWD mismatches between PowerShell and Win32.
+- **Explicit passlogfile:** 2-pass log files use explicit temp paths instead of relying on the working directory.
 - **Audio budget:** Audio is encoded at 96 kbps AAC. The bitrate calculator subtracts audio from the total budget before computing video bitrate.
+- **Windows:** FFmpeg runs without stdout/stderr redirection to avoid pipe deadlocks in the PS2EXE runtime. Progress is tracked via `-progress <tempfile>`.
+- **macOS:** Settings via native `osascript` dialogs (folder picker, text input). Progress parsed from ffmpeg stderr in real time. Sends macOS notification on completion.
 
 ---
 
 ## 💻 System Requirements
 
-| | Minimum |
-|---|---|
-| **OS** | Windows 10 / 11 (x64) |
-| **RAM** | 4 GB |
-| **Disk** | ~200 KB for the EXE + space for compressed output |
-| **Runtime** | PowerShell 5.1 (built into Windows 10/11) |
-| **FFmpeg** | Auto-installed via winget if missing |
-| **Internet** | Only needed once for FFmpeg auto-install |
+| | Windows | macOS |
+|---|---|---|
+| **OS** | Windows 10 / 11 (x64) | macOS 10.15+ (Intel & Apple Silicon) |
+| **RAM** | 4 GB | 4 GB |
+| **Disk** | ~200 KB for the EXE | ~20 KB for the script |
+| **Runtime** | PowerShell 5.1 (built-in) | bash (built-in) |
+| **FFmpeg** | Auto-installed via winget | Auto-installed via Homebrew |
+| **Internet** | Only for FFmpeg auto-install | Only for FFmpeg auto-install |
 
 > 💡 No GPU required — encoding is CPU-based (x264). Any modern CPU works fine; faster CPU = faster encoding.
 
@@ -184,13 +193,15 @@ Or simply run:
 
 ## 🔧 Troubleshooting
 
-| Issue | Solution |
-|-------|----------|
-| FFmpeg not found | Install via `winget install Gyan.FFmpeg` or place `ffmpeg.exe` next to the app |
-| UAC prompt on launch | Re-download the EXE — it should not require admin privileges |
-| Output larger than target | Expected for very long videos at small size limits — pre-flight warning will explain |
-| App won't close | Click STOP first to cancel processing, then close normally |
-| Antivirus flags EXE | PS2EXE-compiled scripts are sometimes flagged as false positives. Add an exception or run the `.ps1` directly. |
+| Issue | Platform | Solution |
+|-------|----------|----------|
+| FFmpeg not found | Windows | Install via `winget install Gyan.FFmpeg` or place `ffmpeg.exe` next to the app |
+| FFmpeg not found | macOS | Install via `brew install ffmpeg` |
+| UAC prompt on launch | Windows | Re-download the EXE — it should not require admin privileges |
+| "Unidentified developer" | macOS | Right-click the file → Open, or run `chmod +x chucha-compress.command` |
+| Output larger than target | Both | Expected for very long videos at small size limits — pre-flight warning will explain |
+| App won't close | Windows | Click STOP first to cancel processing, then close normally |
+| Antivirus flags EXE | Windows | PS2EXE-compiled scripts are sometimes flagged as false positives. Add an exception or run `.ps1` directly |
 
 ---
 
