@@ -203,7 +203,7 @@ public static class ModernPicker {
         return result;
     }
 }
-'@ -ReferencedAssemblies System.Runtime.InteropServices -ErrorAction Stop
+'@ -ReferencedAssemblies System.Runtime.InteropServices -ErrorAction Stop -WarningAction SilentlyContinue
     $script:HasModernPicker = $true
 } catch {
     $script:HasModernPicker = $false
@@ -739,18 +739,6 @@ $fontBtn    = New-Object Drawing.Font($uiFontFamily, 10, [Drawing.FontStyle]::Re
 $fontMono   = New-Object Drawing.Font("Consolas",  8.5)
 $fontCopy   = New-Object Drawing.Font($uiFontFamily, 7.5)
 
-# -- Form ----------------------------------------------------------------------
-try {
-    Add-Type -TypeDefinition @"
-    using System;
-    using System.Runtime.InteropServices;
-    public class Dwm {
-        [DllImport(""dwmapi.dll"", CharSet=CharSet.Unicode, SetLastError=true)]
-        public static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int attrValue, int attrSize);
-    }
-"@ -ErrorAction SilentlyContinue
-} catch {}
-
 $form = New-Object Windows.Forms.Form
 
 # -- DWM dark titlebar ---------------------------------------------------------
@@ -772,7 +760,7 @@ public class DarkTitle {
         SetWindowPos(hwnd, IntPtr.Zero, 0, 0, 0, 0, 0x0020 | 0x0002 | 0x0001 | 0x0004);
     }
 }
-"@ -ErrorAction SilentlyContinue
+"@ -ErrorAction SilentlyContinue -WarningAction SilentlyContinue
 } catch {}
 
 $form.Add_HandleCreated({
@@ -856,7 +844,7 @@ public class LogoOverlay : Panel
         e.Graphics.DrawImage(_bmp, rect, 0, 0, _bmp.Width, _bmp.Height, GraphicsUnit.Pixel, _attrs);
     }
 }
-"@ -ErrorAction SilentlyContinue
+"@ -ErrorAction SilentlyContinue -WarningAction SilentlyContinue
 } catch {}
 
 try {
@@ -986,7 +974,7 @@ public class DarkComboBox : ComboBox
                 e.Bounds.X + 4, e.Bounds.Y + 3);
     }
 }
-"@ -ErrorAction Stop
+"@ -ErrorAction Stop -WarningAction SilentlyContinue
 } catch {}
 
 function New-DarkCombo {
