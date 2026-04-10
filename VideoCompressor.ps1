@@ -756,6 +756,28 @@ try {
 
 $form = New-Object Windows.Forms.Form
 $form.Add_Load({
+try {
+    $imgPath = "D:\Work\Assets\Projects\Business\CAMERAPTOR\CAMERAPTOR.COM\public\brand\glyph\glyph-vertical.png"
+    if (Test-Path $imgPath) {
+        $script:LogoBmp = New-Object Drawing.Bitmap($imgPath)
+        $script:LogoAttrs = New-Object Drawing.Imaging.ImageAttributes
+        $matrix = New-Object Drawing.Imaging.ColorMatrix
+        $matrix.Matrix00 = 0; $matrix.Matrix11 = 0; $matrix.Matrix22 = 0; $matrix.Matrix33 = 1; $matrix.Matrix44 = 1
+        $matrix.Matrix40 = 33/255.0; $matrix.Matrix41 = 193/255.0; $matrix.Matrix42 = 52/255.0
+        $script:LogoAttrs.SetColorMatrix($matrix)
+        
+        $form.Add_Paint({
+            param($s, $e)
+            $w = [int]($script:LogoBmp.Width * (180 / $script:LogoBmp.Height)) # vertical glyph scale
+            if ($w -le 0 -or $w -gt 500) { $w = 70 }
+            $x = $s.ClientSize.Width - $w - 24 # 24px right padding
+            $y = 35
+            $rect = New-Object Drawing.Rectangle($x, $y, $w, 180)
+            $e.Graphics.SmoothingMode = "HighQuality"
+            $e.Graphics.DrawImage($script:LogoBmp, $rect, 0, 0, $script:LogoBmp.Width, $script:LogoBmp.Height, [Drawing.GraphicsUnit]::Pixel, $script:LogoAttrs)
+        })
+    }
+} catch {}
     try {
         $useImmersiveDarkMode = 1
         [Dwm]::DwmSetWindowAttribute($form.Handle, 20, [ref]$useImmersiveDarkMode, 4) | Out-Null
@@ -806,15 +828,6 @@ $sep1.Size      = [Drawing.Size]::new(432, 1)
 $sep1.BackColor = $clrAccent
 $form.Controls.Add($sep1)
 
-$logoBox = New-Object Windows.Forms.PictureBox
-$logoBox.Location = [Drawing.Point]::new(260, 21)
-$logoBox.Size = [Drawing.Size]::new(200, 206)
-$logoBox.SizeMode = "Zoom"
-$logoBox.BackColor = [Drawing.Color]::Transparent
-try {
-    $logoBox.Image = [Drawing.Image]::FromFile("D:\Work\Assets\Projects\Business\CAMERAPTOR\CAMERAPTOR.COM\public\brand\glyph\glyph-vertical.png")
-} catch {}
-$form.Controls.Add($logoBox)
 
 # -- Settings ------------------------------------------------------------------
 $y = 100
@@ -835,18 +848,29 @@ function New-FmtBtn { param($Lbl, $X, $W=80, $On=$false)
     $rb.Size = [Drawing.Size]::new($W, 30)
     $rb.Appearance = [Windows.Forms.Appearance]::Button
     $rb.FlatStyle = [Windows.Forms.FlatStyle]::Flat
+    $rb.BackColor = $clrBg
+    $rb.ForeColor = $clrText
     $rb.FlatAppearance.BorderColor = $clrBorder
     $rb.FlatAppearance.BorderSize  = 1
-    $rb.FlatAppearance.CheckedBackColor   = $clrAccent
-    $rb.FlatAppearance.MouseDownBackColor = $clrPressed
-    $rb.FlatAppearance.MouseOverBackColor = [Drawing.Color]::FromArgb(30, 30, 30)
-    $rb.BackColor = $clrInput
-    $rb.ForeColor = $clrText
+    $rb.FlatAppearance.CheckedBackColor   = $clrBg
+    $rb.FlatAppearance.MouseDownBackColor = [Drawing.Color]::FromArgb(15, 33, 193, 52)
+    $rb.FlatAppearance.MouseOverBackColor = [Drawing.Color]::FromArgb(15, 33, 193, 52)
     $rb.Font = $fontSmall
     $rb.Checked = $On
     $rb.TextAlign = [Drawing.ContentAlignment]::MiddleCenter
     $rb.Cursor = [Windows.Forms.Cursors]::Hand
-    $rb
+    $syncStyle = {
+        if ($this.Checked) {
+            $this.FlatAppearance.BorderColor = $clrAccent
+            $this.ForeColor = $clrAccent
+        } else {
+            $this.FlatAppearance.BorderColor = $clrBorder
+            $this.ForeColor = $clrText
+        }
+    }
+    $rb.Add_CheckedChanged($syncStyle)
+    if ($On) { $rb.FlatAppearance.BorderColor = $clrAccent; $rb.ForeColor = $clrAccent }
+    return $rb
 }
 
 $modePanel = New-Object Windows.Forms.Panel
@@ -888,10 +912,13 @@ $videoSettingsPanel.Controls.Add($lblSizeLbl)
 
 $vy += 22
 
-$txtRes = New-Object Windows.Forms.TextBox
-$txtRes.Text = "1270"; $txtRes.Location = [Drawing.Point]::new(24, $vy)
-$txtRes.Size = [Drawing.Size]::new(170, 28); $txtRes.BackColor = $clrInput
-$txtRes.ForeColor = $clrText; $txtRes.BorderStyle = "FixedSingle"; $txtRes.Font = $fontUI
+$txtRes = New-Object Windows.Forms.ComboBox
+$txtRes.Location = [Drawing.Point]::new(24, $vy)
+$txtRes.Size = [Drawing.Size]::new(170, 26)
+$txtRes.BackColor = $clrInput; $txtRes.ForeColor = $clrText
+$txtRes.FlatStyle = "Flat"; $txtRes.Font = $fontUI
+$txtRes.Items.AddRange(@("480", "720", "1080", "1270", "1920", "2560", "3840"))
+$txtRes.Text = "1270"
 $videoSettingsPanel.Controls.Add($txtRes)
 
 $lblPx = New-Object Windows.Forms.Label
@@ -1251,6 +1278,24 @@ $dropPanel.Location = [Drawing.Point]::new(24, $y)
 $dropPanel.Size = [Drawing.Size]::new(432, 130)
 $dropPanel.BackColor = $clrDropBg
 $dropPanel.AllowDrop = $true
+$dropPanel.Add_Paint({
+    param($s, $e)
+    $e.Graphics.SmoothingMode = "AntiAlias"
+    $r = 8
+    $path = New-Object System.Drawing.Drawing2D.GraphicsPath
+    $path.AddArc(0, 0, $r*2, $r*2, 180, 90)
+    $path.AddArc($s.Width - 1 - $r*2, 0, $r*2, $r*2, 270, 90)
+    $path.AddArc($s.Width - 1 - $r*2, $s.Height - 1 - $r*2, $r*2, $r*2, 0, 90)
+    $path.AddArc(0, $s.Height - 1 - $r*2, $r*2, $r*2, 90, 90)
+    $path.CloseFigure()
+    $s.Region = New-Object System.Drawing.Region($path)
+    $pen = New-Object Drawing.Pen([Drawing.Color]::FromArgb(120, 33, 193, 52), 1)
+    $pen.DashStyle = "Dash"
+    $e.Graphics.DrawPath($pen, $path)
+    $pen.Dispose()
+})
+$dropPanel.Add_DragEnter({ $this.BackColor = [Drawing.Color]::FromArgb(15, 33, 193, 52) })
+$dropPanel.Add_DragLeave({ $this.BackColor = $clrDropBg })
 $form.Controls.Add($dropPanel)
 
 # File list inside drop panel
@@ -1299,9 +1344,10 @@ $btnStart.Size = [Drawing.Size]::new(432, 46)
 $btnStart.BackColor = $clrAccent
 $btnStart.ForeColor = [Drawing.Color]::White
 $btnStart.FlatStyle = "Flat"
-$btnStart.FlatAppearance.BorderSize = 0
-$btnStart.FlatAppearance.MouseOverBackColor = $clrHover
-$btnStart.FlatAppearance.MouseDownBackColor = $clrPressed
+$btnStart.FlatAppearance.BorderSize = 1
+$btnStart.FlatAppearance.BorderColor = $clrAccent
+$btnStart.FlatAppearance.MouseOverBackColor = [Drawing.Color]::FromArgb(20, 33, 193, 52)
+$btnStart.FlatAppearance.MouseDownBackColor = [Drawing.Color]::FromArgb(40, 33, 193, 52)
 $btnStart.Font = $fontBtn
 $btnStart.Cursor = [Windows.Forms.Cursors]::Hand
 $form.Controls.Add($btnStart)
