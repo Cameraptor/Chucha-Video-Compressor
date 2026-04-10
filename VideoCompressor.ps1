@@ -1003,7 +1003,7 @@ function New-DarkCombo {
     return $cb
 }
 $form.Text            = "Chucha Video Compressor"
-$form.ClientSize      = [Drawing.Size]::new(480, 856)
+$form.ClientSize      = [Drawing.Size]::new(480, 920)
 $form.MinimumSize     = [Drawing.Size]::new(496, 895)
 $form.MaximumSize     = [Drawing.Size]::new(496, 895)
 $form.StartPosition   = "CenterScreen"
@@ -1599,7 +1599,7 @@ $y += 158
 
 # -- Copyright -----------------------------------------------------------------
 $lblCopy = New-Object Windows.Forms.LinkLabel
-$lblCopy.Text = "Made in Luga by Voogie  |  cameraptor.com/voogie"
+$lblCopy.Text = "Made in Luga  |  cameraptor.com/voogie"
 $lblCopy.Font = $fontCopy
 $lblCopy.Location = [Drawing.Point]::new(24, $y)
 $lblCopy.AutoSize = $true
