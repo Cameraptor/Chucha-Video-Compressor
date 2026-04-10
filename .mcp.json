@@ -1,8 +1,0 @@
-{
-  "mcpServers": {
-    "winforms-mcp": {
-      "command": "npx",
-      "args": ["-y", "@fnrhombus/winforms-mcp"]
-    }
-  }
-}

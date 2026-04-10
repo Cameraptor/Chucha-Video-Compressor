@@ -3,13 +3,17 @@ ffmpeg2pass*
 *.log.mbtree
 Compressed/
 
-# AI workspace temp
-.ai/temp/*
-!.ai/temp/.gitkeep
-
-# Proof-loop skill repo (cloned submodule)
-.claude/skills/repo-task-proof-loop/
-
 # OS
 .DS_Store
 Thumbs.db
+
+# AI workspace — local only, not for public repo
+.ai/
+.agent/
+.claude/
+.codex/
+.mcp.json
+AGENTS.md
+CLAUDE.md
+docs/
+status.txt
