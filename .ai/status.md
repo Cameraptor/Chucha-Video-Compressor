@@ -9,10 +9,10 @@
 | Field | Value |
 |-------|-------|
 | Phase | 2 — v2 Core Features |
-| Progress | 0% |
-| Status | Ready to Start |
+| Progress | 75% |
+| Status | In Progress |
 | Last Updated | 2026-04-10 |
-| Next Milestone | Task 1: Brand color correction |
+| Next Milestone | Clean Windows testing + README update |
 
 ---
 
@@ -31,21 +31,27 @@ Repository, governance, docs structure all in place.
 Working batch compressor with target file size. 849-line PS1 + 365-line bash.
 
 ### Phase 2 — v2 Core Features (Current)
-- [ ] Brand color correction
-- [ ] Font embedding (Cormorant + Raleway)
-- [ ] IFileOpenDialog COM interop
-- [ ] Drop zone panel UI
-- [ ] File list + counter
-- [ ] Drag-and-drop handling
-- [ ] Browse files/folder buttons
-- [ ] Audio extraction mode
-- [ ] Mode toggle visibility
-- [ ] GPU detection
-- [ ] GPU encoder selection UI
-- [ ] GPU encoding branches
-- [ ] H.265 codec radio
-- [ ] libx265 two-pass flags
-- [ ] Advanced panel collapse/expand
+- [x] Brand color correction (#21C134, #9A9590, DWM dark titlebar)
+- [x] Font embedding (Cormorant SemiBold + Raleway Regular via Base64 TTF)
+- [x] IFileOpenDialog COM interop (ModernPicker)
+- [x] Drop zone panel UI
+- [x] File list + counter
+- [x] Drag-and-drop handling
+- [x] Browse files/folder buttons
+- [x] Audio extraction mode (MP3/AAC/WAV)
+- [x] Mode toggle visibility
+- [x] GPU detection (auto NVENC/AMF/QSV)
+- [x] GPU encoder selection UI
+- [x] GPU encoding branches
+- [x] H.265 codec chip + H.264 chip
+- [x] libx265 two-pass flags (x265-params)
+- [x] Advanced panel collapse/expand
+- [x] WebM/VP9 output format
+- [x] Resolution up to 4K (3840)
+- [x] Scale algorithm selector (bicubic/lanczos/bilinear)
+- [ ] Clean Windows testing (fresh system, no dev tools)
+- [ ] README update
+- [ ] GitHub release
 
 ### Phase 3 — Release & Hardening
 - [ ] Clean Windows testing

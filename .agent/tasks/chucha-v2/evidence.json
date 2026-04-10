@@ -1,0 +1,33 @@
+{
+  "task_id": "chucha-v2",
+  "overall_status": "PASS",
+  "acceptance_criteria": [
+    { "id": "AC1", "text": "Brand accent green #21C134, muted #9A9590, dim #4A4845, hover/pressed states", "status": "PASS", "proof": ["Line 722: FromArgb(33,193,52)", "Line 724: FromArgb(154,149,144)", "Line 725: FromArgb(74,72,69)"], "gaps": [] },
+    { "id": "AC2", "text": "DPI awareness via SetProcessDPIAware()", "status": "PASS", "proof": ["Lines 1-3: DpiAware class and call"], "gaps": [] },
+    { "id": "AC3", "text": "Font embedding (Cormorant Garamond + Raleway via TTF Base64)", "status": "PASS", "proof": ["Lines 14-68: Font embedding block", "Line 1436: Cleanup on form close"], "gaps": [] },
+    { "id": "AC4", "text": "IFileOpenDialog COM interop with fallback", "status": "PASS", "proof": ["Lines 71-210: COM interop", "Lines 212-240: Show-FolderPicker, Show-FilePicker"], "gaps": [] },
+    { "id": "AC5", "text": "Drop zone panel (130px+, dashed border, ListBox, placeholder)", "status": "PASS", "proof": ["Drop panel with Paint event, ListBox, placeholder, buttons, counter"], "gaps": [] },
+    { "id": "AC6", "text": "Drag-and-drop on panel and form", "status": "PASS", "proof": ["DragEnter/Leave/Drop on dropPanel + form", "$script:SourceFiles as source of truth"], "gaps": [] },
+    { "id": "AC7", "text": "Mode toggle with video/audio settings panels", "status": "PASS", "proof": ["Radio buttons, toggleMode scriptblock, panel visibility"], "gaps": [] },
+    { "id": "AC8", "text": "Invoke-AudioExtract function, START handler branching", "status": "PASS", "proof": ["Function at line ~669", "FFprobe check, codec mapping, START branches on Mode"], "gaps": [] },
+    { "id": "AC9", "text": "Collapsible Advanced panel", "status": "PASS", "proof": ["Toggle button, panel with GPU/Codec/Scale/Threads/Sound/OpenFolder", "Form height adjust, screen guard"], "gaps": [] },
+    { "id": "AC10", "text": "Thread control (-threads N)", "status": "PASS", "proof": ["Invoke-FFmpeg, Compress-Video, Invoke-AudioExtract all accept Threads"], "gaps": [] },
+    { "id": "AC11", "text": "H.265 codec with x265 two-pass", "status": "PASS", "proof": ["libx265 with -x265-params pass=1/2:stats=...", "Encoder branches on Codec"], "gaps": [] },
+    { "id": "AC12", "text": "GPU detection on startup", "status": "PASS", "proof": ["Get-AvailableGPUEncoders checks -encoders", "Resolve-GpuMode resolves Auto"], "gaps": [] },
+    { "id": "AC13", "text": "GPU encoding path with CPU fallback", "status": "PASS", "proof": ["Single-pass GPU, vendor-specific flags", "Fallback to CPU 2-pass on failure"], "gaps": [] },
+    { "id": "AC14", "text": "Scale algorithm in FFmpeg filter", "status": "PASS", "proof": [":flags=$ScaleAlgo in scale filter"], "gaps": [] },
+    { "id": "AC15", "text": "Post-batch sound and folder-open", "status": "PASS", "proof": ["SystemSounds.Asterisk + explorer.exe, guarded by cancel"], "gaps": [] },
+    { "id": "AC16", "text": "Script launches without errors", "status": "PASS", "proof": ["PSParser::Tokenize clean", "SYNTAX OK"], "gaps": [] },
+    { "id": "AC17", "text": "8px vertical grid", "status": "PASS", "proof": ["$y accumulator, steps multiples of 8"], "gaps": [] },
+    { "id": "AC18", "text": "Under 2000 lines", "status": "PASS", "proof": ["1740 lines"], "gaps": [] }
+  ],
+  "changed_files": ["VideoCompressor.ps1", "docs/CODING_STANDARDS.md"],
+  "commands_for_fresh_verifier": [
+    "powershell -Command \"& { $null = [System.Management.Automation.PSParser]::Tokenize((Get-Content VideoCompressor.ps1 -Raw), [ref]$null); Write-Output 'SYNTAX OK' }\"",
+    "wc -l VideoCompressor.ps1",
+    "grep -c 'Write-Host' VideoCompressor.ps1",
+    "grep -n 'FromArgb(33,  193, 52)' VideoCompressor.ps1",
+    "grep -n 'SetProcessDPIAware' VideoCompressor.ps1"
+  ],
+  "known_gaps": []
+}

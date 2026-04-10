@@ -1,6 +1,6 @@
 ﻿# --- DPI awareness (must be before any WinForms loading) ---------------------
 # Add-Type -TypeDefinition 'using System.Runtime.InteropServices; public class DpiAware { [DllImport("user32.dll")] public static extern bool SetProcessDPIAware(); }' -ErrorAction SilentlyContinue
-# try { [DpiAware]::SetProcessDPIAware() } catch {} # Disabled to allow native OS bitmap scaling on High-DPI screens
+# try { [DpiAware]::SetProcessDPIAware() } catch {} # Disabled — native OS bitmap scaling preferred on HiDPI
 
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
@@ -211,32 +211,13 @@ public static class ModernPicker {
 
 function Show-FolderPicker {
     param([IntPtr]$Owner = [IntPtr]::Zero)
-    if ($script:HasModernPicker) {
-        try {
-            $result = [ModernPicker]::PickFolder($Owner)
-            if ($result) { return $result }
-            return $null
-        } catch {}
-    }
-    $dlg = New-Object Windows.Forms.FolderBrowserDialog
-    $dlg.Description = "Select folder with video files"
-    if ($dlg.ShowDialog() -eq "OK") { return $dlg.SelectedPath }
+    try { return [ModernPicker]::PickFolder($Owner) } catch {}
     return $null
 }
 
 function Show-FilePicker {
     param([IntPtr]$Owner = [IntPtr]::Zero)
-    if ($script:HasModernPicker) {
-        try {
-            $result = [ModernPicker]::PickFiles($Owner)
-            if ($result) { return $result }
-            return $null
-        } catch {}
-    }
-    $dlg = New-Object Windows.Forms.OpenFileDialog
-    $dlg.Multiselect = $true
-    $dlg.Filter = "Video files|*.mp4;*.mov;*.avi;*.mkv;*.webm;*.mxf;*.m4v;*.wmv|All files|*.*"
-    if ($dlg.ShowDialog() -eq "OK") { return $dlg.FileNames }
+    try { return [ModernPicker]::PickFiles($Owner) } catch {}
     return $null
 }
 
@@ -555,14 +536,16 @@ function Compress-Video {
 
     $scale = "scale='if(gte(iw,ih),$MaxRes,-2)':'if(gte(iw,ih),-2,$MaxRes)':flags=$ScaleAlgo"
 
-    $ext     = if ($Format -eq "MOV") { ".mov" } else { ".mp4" }
+    $ext     = switch ($Format) { "MOV" { ".mov" } "WebM" { ".webm" } default { ".mp4" } }
     $outFull = [IO.Path]::ChangeExtension($OutputPath, $ext)
     $outDir  = Split-Path -Parent $outFull
     if (-not (Test-Path $outDir)) { New-Item -ItemType Directory -Path $outDir -Force | Out-Null }
 
+    $isWebM = ($Format -eq "WebM")
+
     # Resolve GPU mode and select encoder
     $resolvedGpu = Resolve-GpuMode $GpuMode
-    $isGpu = ($resolvedGpu -ne "CPU")
+    $isGpu = ($resolvedGpu -ne "CPU") -and (-not $isWebM)  # libvpx-vp9 has no GPU hw-enc path
 
     if ($isGpu) {
         $encoderName = switch ($resolvedGpu) {
@@ -571,7 +554,7 @@ function Compress-Video {
             "Intel"  { if ($Codec -eq "H.265") { "hevc_qsv"  } else { "h264_qsv"  } }
         }
     } else {
-        $encoderName = if ($Codec -eq "H.265") { "libx265" } else { "libx264" }
+        $encoderName = if ($isWebM) { "libvpx-vp9" } elseif ($Codec -eq "H.265") { "libx265" } else { "libx264" }
     }
 
     # Use explicit passlogfile in TEMP so we never depend on CWD
@@ -579,7 +562,10 @@ function Compress-Video {
     $passLog = Join-Path $env:TEMP "ffpass_$([guid]::NewGuid().ToString('N').Substring(0,8))"
     $progressFile = ""
 
-    $audioArgs = if ($hasAudio) { @("-c:a","aac","-b:a","${audioBitrateK}k") } else { @("-an") }
+    $audioArgs = if ($hasAudio) {
+        if ($isWebM) { @("-c:a","libopus","-b:a","${audioBitrateK}k") }
+        else         { @("-c:a","aac","-b:a","${audioBitrateK}k") }
+    } else { @("-an") }
 
     if ($isGpu) {
         # --- GPU path: single-pass with constrained bitrate ---
@@ -620,7 +606,11 @@ function Compress-Video {
 
     if (-not $isGpu -and -not $script:CancelRequested) {
         # --- CPU path: 2-pass encoding ---
-        if ($Codec -eq "H.265") {
+        if ($isWebM) {
+            $passFlag1   = @("-pass", "1", "-passlogfile", $passLog)
+            $passFlag2   = @("-pass", "2", "-passlogfile", $passLog)
+            $extraParams = @()
+        } elseif ($Codec -eq "H.265") {
             $passFlag1   = @("-x265-params", "pass=1:stats=${passLog}.log")
             $passFlag2   = @("-x265-params", "pass=2:stats=${passLog}.log")
             $extraParams = @()
@@ -628,6 +618,13 @@ function Compress-Video {
             $passFlag1   = @("-pass", "1", "-passlogfile", $passLog)
             $passFlag2   = @("-pass", "2", "-passlogfile", $passLog)
             $extraParams = @("-x264-params", "mbtree=0")
+        }
+
+        # WebM output args: no -movflags (not an MP4 container), no -preset (vp9 uses -quality/-cpu-used)
+        $containerArgs = if ($isWebM) {
+            @("-quality","good","-cpu-used","2")
+        } else {
+            @("-preset","slow","-movflags","+faststart")
         }
 
         try {
@@ -647,8 +644,8 @@ function Compress-Video {
             $progressFile = Join-Path $env:TEMP "ffprog_$([guid]::NewGuid().ToString('N').Substring(0,8)).txt"
             $p2 = @("-y","-progress",$progressFile,"-i",$File.FullName,"-vf",$scale,
                     "-c:v",$encoderName,"-b:v","${vbrKbps}k") + $extraParams + $passFlag2 +
-                   @("-preset","slow") + $audioArgs +
-                   @("-movflags","+faststart",$outFull)
+                   $containerArgs + $audioArgs +
+                   @($outFull)
             $exit2 = Invoke-FFmpeg $p2 -TotalDuration $duration -StatusLabel $StatusLabel -PassLabel "Pass 2/2" -ProgressFile $progressFile -Threads $Threads
             if ($exit2 -ne 0 -and -not $script:CancelRequested) {
                 return @{ Success=$false }
@@ -722,7 +719,7 @@ $clrBorder  = [Drawing.Color]::FromArgb(38,  38,  38)   # #262626  Base MID
 $clrAccent  = [Drawing.Color]::FromArgb(33,  193, 52)   # #21C134  Raptor GREEN (brand)
 $clrText    = [Drawing.Color]::FromArgb(242, 226, 226)  # #F2E2E2  Base LIGHT
 $clrMuted   = [Drawing.Color]::FromArgb(154, 149, 144)  # #9A9590  Brand warm gray
-$clrDim     = [Drawing.Color]::FromArgb(120, 118, 115)  # Brighter dim text for better contrast
+$clrDim     = [Drawing.Color]::FromArgb(74,  72,  69)   # #4A4845  Brand dim text
 $clrHover   = [Drawing.Color]::FromArgb(42,  212, 63)   # #2AD43F  Hover (+15% lum)
 $clrPressed = [Drawing.Color]::FromArgb(26,  154, 42)   # #1A9A2A  Pressed (-20% lum)
 $clrDanger  = [Drawing.Color]::FromArgb(180, 40,  40)   # #B42828  Stop/error
@@ -734,11 +731,11 @@ $titleFontFamily = if ($script:FontCormorant) { $script:FontCormorant } else { "
 $uiFontFamily    = if ($script:FontRaleway)   { $script:FontRaleway }   else { "Segoe UI" }
 
 $fontBrand  = New-Object Drawing.Font($uiFontFamily, 7.5)
-$fontTitle  = New-Object Drawing.Font($titleFontFamily, 20, [Drawing.FontStyle]::Bold)
+$fontTitle  = New-Object Drawing.Font($titleFontFamily, 20, [Drawing.FontStyle]::Regular)  # SemiBold embedded — no synthetic Bold
 $fontLabel  = New-Object Drawing.Font($uiFontFamily, 7,  [Drawing.FontStyle]::Regular)
 $fontUI     = New-Object Drawing.Font($uiFontFamily, 9.5)
 $fontSmall  = New-Object Drawing.Font($uiFontFamily, 8.5)
-$fontBtn    = New-Object Drawing.Font($uiFontFamily, 11, [Drawing.FontStyle]::Bold)
+$fontBtn    = New-Object Drawing.Font($uiFontFamily, 10, [Drawing.FontStyle]::Regular)     # Raleway Regular — no synthetic Bold
 $fontMono   = New-Object Drawing.Font("Consolas",  8.5)
 $fontCopy   = New-Object Drawing.Font($uiFontFamily, 7.5)
 
@@ -755,44 +752,256 @@ try {
 } catch {}
 
 $form = New-Object Windows.Forms.Form
-$form.Add_Load({
+
+# -- DWM dark titlebar ---------------------------------------------------------
+# Attr 20 = DWMWA_USE_IMMERSIVE_DARK_MODE (Win10 20H1+), attr 19 = pre-20H1
 try {
-    $imgPath = "D:\Work\Assets\Projects\Business\CAMERAPTOR\CAMERAPTOR.COM\public\brand\glyph\glyph-vertical.png"
-    if (Test-Path $imgPath) {
-        $script:LogoBmp = New-Object Drawing.Bitmap($imgPath)
-        $script:LogoAttrs = New-Object Drawing.Imaging.ImageAttributes
-        $matrix = New-Object Drawing.Imaging.ColorMatrix
-        $matrix.Matrix00 = 0; $matrix.Matrix11 = 0; $matrix.Matrix22 = 0; $matrix.Matrix33 = 1; $matrix.Matrix44 = 1
-        $matrix.Matrix40 = 33/255.0; $matrix.Matrix41 = 193/255.0; $matrix.Matrix42 = 52/255.0
-        $script:LogoAttrs.SetColorMatrix($matrix)
-        
-        $form.Add_Paint({
-            param($s, $e)
-            $w = [int]($script:LogoBmp.Width * (180 / $script:LogoBmp.Height)) # vertical glyph scale
-            if ($w -le 0 -or $w -gt 500) { $w = 70 }
-            $x = $s.ClientSize.Width - $w - 24 # 24px right padding
-            $y = 35
-            $rect = New-Object Drawing.Rectangle($x, $y, $w, 180)
-            $e.Graphics.SmoothingMode = "HighQuality"
-            $e.Graphics.DrawImage($script:LogoBmp, $rect, 0, 0, $script:LogoBmp.Width, $script:LogoBmp.Height, [Drawing.GraphicsUnit]::Pixel, $script:LogoAttrs)
-        })
+Add-Type -TypeDefinition @"
+using System;
+using System.Runtime.InteropServices;
+public class DarkTitle {
+    [DllImport("dwmapi.dll", PreserveSig = true)]
+    static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int val, int sz);
+    [DllImport("user32.dll")]
+    static extern bool SetWindowPos(IntPtr hWnd, IntPtr after, int x, int y, int cx, int cy, uint flags);
+    public static void Apply(IntPtr hwnd) {
+        int v = 1;
+        if (DwmSetWindowAttribute(hwnd, 20, ref v, 4) != 0)
+            DwmSetWindowAttribute(hwnd, 19, ref v, 4);
+        // SWP_FRAMECHANGED | SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER
+        SetWindowPos(hwnd, IntPtr.Zero, 0, 0, 0, 0, 0x0020 | 0x0002 | 0x0001 | 0x0004);
+    }
+}
+"@ -ErrorAction SilentlyContinue
+} catch {}
+
+$form.Add_HandleCreated({
+    try { [DarkTitle]::Apply($form.Handle) } catch {}
+})
+
+# -- App icon — favicon-32.png recolored to warm light gray (#C8C4BF) ----------
+try {
+    $favPath = "D:\Work\Assets\Projects\Business\CAMERAPTOR\CAMERAPTOR.COM\public\favicon-32.png"
+    if (Test-Path $favPath) {
+        $favSrc = New-Object Drawing.Bitmap($favPath)
+        $favBmp = New-Object Drawing.Bitmap(32, 32, [Drawing.Imaging.PixelFormat]::Format32bppArgb)
+        $favG   = [Drawing.Graphics]::FromImage($favBmp)
+        $mFav   = New-Object Drawing.Imaging.ColorMatrix
+        $mFav.Matrix00 = 0; $mFav.Matrix11 = 0; $mFav.Matrix22 = 0; $mFav.Matrix44 = 1
+        $mFav.Matrix33 = 1
+        $mFav.Matrix40 = 200/255.0; $mFav.Matrix41 = 196/255.0; $mFav.Matrix42 = 191/255.0  # #C8C4BF warm light gray
+        $favAttrs = New-Object Drawing.Imaging.ImageAttributes
+        $favAttrs.SetColorMatrix($mFav)
+        $favG.DrawImage($favSrc, [Drawing.Rectangle]::new(0,0,32,32), 0, 0, $favSrc.Width, $favSrc.Height, [Drawing.GraphicsUnit]::Pixel, $favAttrs)
+        $favG.Dispose(); $favSrc.Dispose()
+        $form.Icon = [Drawing.Icon]::FromHandle($favBmp.GetHicon())
+        $favBmp.Dispose()
+    } else {
+        $form.Icon = New-Object Drawing.Icon((Join-Path $PSScriptRoot "compressor.ico"))
     }
 } catch {}
-    try {
-        $useImmersiveDarkMode = 1
-        [Dwm]::DwmSetWindowAttribute($form.Handle, 20, [ref]$useImmersiveDarkMode, 4) | Out-Null
-        [Dwm]::DwmSetWindowAttribute($form.Handle, 19, [ref]$useImmersiveDarkMode, 4) | Out-Null
-    } catch {}
-    
-    try {
-        $faviconPng = "D:\Work\Assets\Projects\Business\CAMERAPTOR\CAMERAPTOR.COM\public\favicon-32.png"
-        if (Test-Path $faviconPng) {
-            $bmp = New-Object Drawing.Bitmap($faviconPng)
-            $hIcon = $bmp.GetHicon()
-            $form.Icon = [Drawing.Icon]::FromHandle($hIcon)
+
+# -- Logo glyph (click-through overlay ABOVE all controls) --------------------
+# Uses a transparent Panel subclass that passes mouse events through to controls below.
+try {
+Add-Type -ReferencedAssemblies 'System.Windows.Forms','System.Drawing' -TypeDefinition @"
+using System;
+using System.Drawing;
+using System.Drawing.Imaging;
+using System.Windows.Forms;
+
+public class LogoOverlay : Panel
+{
+    private Bitmap _bmp;
+    private ImageAttributes _attrs;
+    private int _logoH = 282;
+
+    public LogoOverlay(string imgPath)
+    {
+        SetStyle(ControlStyles.SupportsTransparentBackColor | ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint, true);
+        DoubleBuffered = true;
+        BackColor = Color.Transparent;
+
+        if (System.IO.File.Exists(imgPath))
+        {
+            _bmp = new Bitmap(imgPath);
+            _attrs = new ImageAttributes();
+            ColorMatrix m = new ColorMatrix();
+            m.Matrix00 = 0; m.Matrix11 = 0; m.Matrix22 = 0;
+            m.Matrix33 = 0.65f; m.Matrix44 = 1;
+            m.Matrix40 = 33f/255f; m.Matrix41 = 193f/255f; m.Matrix42 = 52f/255f;
+            _attrs.SetColorMatrix(m);
         }
-    } catch {}
-})
+    }
+
+    // Let all mouse events pass through to controls below
+    protected override void WndProc(ref Message m)
+    {
+        const int WM_NCHITTEST = 0x0084;
+        const int HTTRANSPARENT = -1;
+        if (m.Msg == WM_NCHITTEST) { m.Result = (IntPtr)HTTRANSPARENT; return; }
+        base.WndProc(ref m);
+    }
+
+    protected override void OnPaint(PaintEventArgs e)
+    {
+        if (_bmp == null) return;
+        int w = (int)(_bmp.Width * ((float)_logoH / _bmp.Height));
+        if (w <= 0 || w > 300) w = 80;
+        int x = (Width - w) / 2;
+        int y = (Height - _logoH) / 2;
+        var rect = new Rectangle(x, y, w, _logoH);
+        e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.HighQuality;
+        e.Graphics.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
+        e.Graphics.DrawImage(_bmp, rect, 0, 0, _bmp.Width, _bmp.Height, GraphicsUnit.Pixel, _attrs);
+    }
+}
+"@ -ErrorAction SilentlyContinue
+} catch {}
+
+try {
+    $imgPath = Join-Path $PSScriptRoot "assets\glyph-cropped.png"
+    if (-not (Test-Path $imgPath)) {
+        $imgPath = "D:\Work\Assets\Projects\Business\CAMERAPTOR\CAMERAPTOR.COM\public\brand\glyph\glyph-vertical.png"
+    }
+    $script:LogoPanel = New-Object LogoOverlay($imgPath)
+    # Logo: 282px tall, aspect ratio ~275:1221 → width ~63px
+    $script:LogoPanel.Location = [Drawing.Point]::new(370, 120)
+    $script:LogoPanel.Size = [Drawing.Size]::new(75, 290)
+} catch {}
+
+# -- DarkComboBox (WM_PAINT subclass for fully dark dropdown button) -----------
+try {
+Add-Type -ReferencedAssemblies 'System.Windows.Forms','System.Drawing' -TypeDefinition @"
+using System;
+using System.Drawing;
+using System.Windows.Forms;
+
+public class DarkComboBox : ComboBox
+{
+    private const int WM_PAINT       = 0x000F;
+    private const int WM_ERASEBKGND  = 0x0014;
+    private const int WM_NCPAINT     = 0x0085;
+
+    [System.Runtime.InteropServices.DllImport("user32.dll")]
+    private static extern bool ValidateRect(IntPtr hWnd, IntPtr lpRect);
+
+    public Color ButtonBg   = Color.FromArgb(22, 22, 22);
+    public Color ArrowFg    = Color.FromArgb(154, 149, 144);
+    public Color BorderFg   = Color.FromArgb(38, 38, 38);
+    public Color SelectBg   = Color.FromArgb(33, 193, 52);
+    public Color ItemBg     = Color.FromArgb(22, 22, 22);
+    public Color ItemFg     = Color.FromArgb(242, 226, 226);
+
+    public DarkComboBox()
+    {
+        FlatStyle = FlatStyle.Flat;
+        DrawMode  = DrawMode.OwnerDrawFixed;
+        ItemHeight = 22;
+        SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint, false);
+    }
+
+    private void PaintButton(Graphics g)
+    {
+        int btnW = SystemInformation.HorizontalScrollBarArrowWidth;
+        var btnRect = new Rectangle(Width - btnW - 1, 1, btnW, Height - 2);
+
+        // Fill the entire control background first
+        using (var b = new SolidBrush(BackColor))
+            g.FillRectangle(b, 0, 0, Width, Height);
+
+        // Draw the dropdown button area
+        using (var b = new SolidBrush(ButtonBg))
+            g.FillRectangle(b, btnRect);
+        using (var p = new Pen(BorderFg))
+            g.DrawRectangle(p, 0, 0, Width - 1, Height - 1);
+
+        // Draw the selected item text
+        string text = (SelectedIndex >= 0 && SelectedIndex < Items.Count)
+            ? Items[SelectedIndex].ToString()
+            : "";
+        if (text.Length > 0)
+        {
+            var textRect = new Rectangle(4, 0, btnRect.Left - 8, Height);
+            using (var tb = new SolidBrush(ForeColor))
+                g.DrawString(text, Font, tb, textRect,
+                    new StringFormat { LineAlignment = StringAlignment.Center,
+                                       Trimming = StringTrimming.EllipsisCharacter,
+                                       FormatFlags = StringFormatFlags.NoWrap });
+        }
+
+        int ax = btnRect.Left + btnRect.Width / 2;
+        int ay = btnRect.Top  + btnRect.Height / 2;
+        var arrow = new Point[] {
+            new Point(ax - 4, ay - 2),
+            new Point(ax + 4, ay - 2),
+            new Point(ax,     ay + 3)
+        };
+        using (var ab = new SolidBrush(ArrowFg))
+            g.FillPolygon(ab, arrow);
+    }
+
+    protected override void WndProc(ref Message m)
+    {
+        if (m.Msg == WM_ERASEBKGND)
+        {
+            // Suppress system erase — prevents white flash
+            m.Result = (IntPtr)1;
+            return;
+        }
+        if (m.Msg == WM_PAINT)
+        {
+            // Do NOT call base.WndProc for WM_PAINT — doing so lets the native
+            // ComCtl32 renderer paint the hover state first, causing a 1-frame
+            // white flash before our custom paint arrives.
+            // Instead: clear the dirty region ourselves, then paint fully custom.
+            ValidateRect(Handle, IntPtr.Zero);
+            using (var g = Graphics.FromHwnd(Handle))
+                PaintButton(g);
+            m.Result = IntPtr.Zero;
+            return;
+        }
+        base.WndProc(ref m);
+        if (m.Msg == WM_NCPAINT)
+        {
+            using (var g = Graphics.FromHwnd(Handle))
+                PaintButton(g);
+        }
+    }
+
+    protected override void OnMouseEnter(EventArgs e)  { base.OnMouseEnter(e); }
+    protected override void OnMouseLeave(EventArgs e)  { base.OnMouseLeave(e); }
+    protected override void OnDropDownClosed(EventArgs e) { base.OnDropDownClosed(e); Invalidate(); }
+
+    protected override void OnDrawItem(DrawItemEventArgs e)
+    {
+        if (e.Index < 0) return;
+        bool sel = (e.State & DrawItemState.Selected) != 0;
+        Color bg = sel ? SelectBg : ItemBg;
+        Color fg = sel ? Color.White : ItemFg;
+        using (SolidBrush bb = new SolidBrush(bg))
+            e.Graphics.FillRectangle(bb, e.Bounds);
+        using (SolidBrush tb = new SolidBrush(fg))
+            e.Graphics.DrawString(Items[e.Index].ToString(), e.Font, tb,
+                e.Bounds.X + 4, e.Bounds.Y + 3);
+    }
+}
+"@ -ErrorAction Stop
+} catch {}
+
+function New-DarkCombo {
+    param([Drawing.Point]$Location, [Drawing.Size]$Size, [string[]]$Items, [string]$Selected, $Font, [switch]$Editable)
+    $cb = New-Object DarkComboBox
+    $cb.Location = $Location
+    $cb.Size = $Size
+    $cb.BackColor = $clrInput
+    $cb.ForeColor = $clrText
+    $cb.Font = $Font
+    $cb.DropDownStyle = if ($Editable) { "DropDown" } else { "DropDownList" }
+    foreach ($item in $Items) { $cb.Items.Add($item) | Out-Null }
+    $cb.Text = $Selected
+    return $cb
+}
 $form.Text            = "Chucha Video Compressor"
 $form.ClientSize      = [Drawing.Size]::new(480, 856)
 $form.MinimumSize     = [Drawing.Size]::new(496, 895)
@@ -814,7 +1023,7 @@ $lblBrand.Location  = [Drawing.Point]::new(24, 22)
 $form.Controls.Add($lblBrand)
 
 $lblTitle = New-Object Windows.Forms.Label
-$lblTitle.Text      = "VIDEO COMPRESSOR"
+$lblTitle.Text      = "Video Compressor"
 $lblTitle.Font      = $fontTitle
 $lblTitle.ForeColor = $clrText
 $lblTitle.AutoSize  = $true
@@ -912,13 +1121,8 @@ $videoSettingsPanel.Controls.Add($lblSizeLbl)
 
 $vy += 22
 
-$txtRes = New-Object Windows.Forms.ComboBox
-$txtRes.Location = [Drawing.Point]::new(24, $vy)
-$txtRes.Size = [Drawing.Size]::new(170, 26)
-$txtRes.BackColor = $clrInput; $txtRes.ForeColor = $clrText
-$txtRes.FlatStyle = "Flat"; $txtRes.Font = $fontUI
-$txtRes.Items.AddRange(@("480", "720", "1080", "1270", "1920", "2560", "3840"))
-$txtRes.Text = "1270"
+$txtRes = New-DarkCombo -Location ([Drawing.Point]::new(24, $vy)) -Size ([Drawing.Size]::new(170, 26)) `
+    -Items @("480","720","1080","1280","1920","2560","3840") -Selected "1280" -Font $fontUI -Editable
 $videoSettingsPanel.Controls.Add($txtRes)
 
 $lblPx = New-Object Windows.Forms.Label
@@ -928,13 +1132,13 @@ $videoSettingsPanel.Controls.Add($lblPx)
 
 $txtSize = New-Object Windows.Forms.TextBox
 $txtSize.Text = "1.5"; $txtSize.Location = [Drawing.Point]::new(228, $vy)
-$txtSize.Size = [Drawing.Size]::new(110, 28); $txtSize.BackColor = $clrInput
+$txtSize.Size = [Drawing.Size]::new(96, 26); $txtSize.BackColor = $clrInput
 $txtSize.ForeColor = $clrText; $txtSize.BorderStyle = "FixedSingle"; $txtSize.Font = $fontUI
 $videoSettingsPanel.Controls.Add($txtSize)
 
 $lblMB = New-Object Windows.Forms.Label
 $lblMB.Text = "MB"; $lblMB.Font = $fontSmall; $lblMB.ForeColor = $clrMuted
-$lblMB.AutoSize = $true; $lblMB.Location = [Drawing.Point]::new(346, ($vy + 5))
+$lblMB.AutoSize = $true; $lblMB.Location = [Drawing.Point]::new(332, ($vy + 5))
 $videoSettingsPanel.Controls.Add($lblMB)
 
 $vy += 46
@@ -951,14 +1155,16 @@ $vy += 22
 # Format as button-style radio group
 $fmtPanel = New-Object Windows.Forms.Panel
 $fmtPanel.Location = [Drawing.Point]::new(24, $vy)
-$fmtPanel.Size = [Drawing.Size]::new(172, 30)
+$fmtPanel.Size = [Drawing.Size]::new(258, 30)
 $fmtPanel.BackColor = $clrBg
 $videoSettingsPanel.Controls.Add($fmtPanel)
 
 $rbMP4  = New-FmtBtn "MP4"   0   82 $true
 $rbMOV  = New-FmtBtn "MOV"   86  82
+$rbWebM = New-FmtBtn "WebM"  172 82
 $fmtPanel.Controls.Add($rbMP4)
 $fmtPanel.Controls.Add($rbMOV)
+$fmtPanel.Controls.Add($rbWebM)
 
 # -- Audio settings panel (hidden by default) ----------------------------------
 $audioSettingsPanel = New-Object Windows.Forms.Panel
@@ -1050,7 +1256,7 @@ $rbCompressed.AutoSize = $true; $rbCompressed.FlatStyle = "Flat"; $rbCompressed.
 $rbCompressed.ForeColor = $clrText; $rbCompressed.Font = $fontSmall
 $form.Controls.Add($rbCompressed)
 
-$y += 24
+$y += 22
 
 $rbSideBySide = New-Object Windows.Forms.RadioButton
 $rbSideBySide.Text = "Save alongside original  (_compressed suffix)"
@@ -1105,15 +1311,8 @@ $pnlAdvanced.Controls.Add($lblCodec)
 
 $ay += 22
 
-$cmbGpu = New-Object Windows.Forms.ComboBox
-$cmbGpu.Location = [Drawing.Point]::new(0, $ay)
-$cmbGpu.Size = [Drawing.Size]::new(200, 24)
-$cmbGpu.DropDownStyle = "DropDownList"
-$cmbGpu.BackColor = $clrInput; $cmbGpu.ForeColor = $clrText
-$cmbGpu.FlatStyle = "Flat"
-$cmbGpu.Font = $fontSmall
-@("Auto","CPU","NVIDIA","AMD","Intel") | ForEach-Object { $cmbGpu.Items.Add($_) | Out-Null }
-$cmbGpu.SelectedIndex = 0
+$cmbGpu = New-DarkCombo -Location ([Drawing.Point]::new(0, $ay)) -Size ([Drawing.Size]::new(200, 24)) `
+    -Items @("Auto","CPU","NVIDIA","AMD","Intel") -Selected "Auto" -Font $fontSmall
 $pnlAdvanced.Controls.Add($cmbGpu)
 
 $rbH264 = New-Object Windows.Forms.RadioButton
@@ -1147,15 +1346,8 @@ $pnlAdvanced.Controls.Add($lblThreads)
 
 $ay += 22
 
-$cmbScale = New-Object Windows.Forms.ComboBox
-$cmbScale.Location = [Drawing.Point]::new(0, $ay)
-$cmbScale.Size = [Drawing.Size]::new(200, 24)
-$cmbScale.DropDownStyle = "DropDownList"
-$cmbScale.BackColor = $clrInput; $cmbScale.ForeColor = $clrText
-$cmbScale.FlatStyle = "Flat"
-$cmbScale.Font = $fontSmall
-@("bicubic","lanczos","bilinear") | ForEach-Object { $cmbScale.Items.Add($_) | Out-Null }
-$cmbScale.SelectedIndex = 0
+$cmbScale = New-DarkCombo -Location ([Drawing.Point]::new(0, $ay)) -Size ([Drawing.Size]::new(200, 24)) `
+    -Items @("bicubic","lanczos","bilinear") -Selected "bicubic" -Font $fontSmall
 $pnlAdvanced.Controls.Add($cmbScale)
 
 $txtThreads = New-Object Windows.Forms.TextBox
@@ -1338,16 +1530,16 @@ $y += 138
 
 # -- START button --------------------------------------------------------------
 $btnStart = New-Object Windows.Forms.Button
-$btnStart.Text = "C O M P R E S S"
+$btnStart.Text = [char]0x25B6 + "   C O M P R E S S"
 $btnStart.Location = [Drawing.Point]::new(24, $y)
 $btnStart.Size = [Drawing.Size]::new(432, 46)
-$btnStart.BackColor = $clrAccent
-$btnStart.ForeColor = [Drawing.Color]::White
+$btnStart.BackColor = $clrBg
+$btnStart.ForeColor = $clrAccent
 $btnStart.FlatStyle = "Flat"
-$btnStart.FlatAppearance.BorderSize = 1
+$btnStart.FlatAppearance.BorderSize = 2
 $btnStart.FlatAppearance.BorderColor = $clrAccent
-$btnStart.FlatAppearance.MouseOverBackColor = [Drawing.Color]::FromArgb(20, 33, 193, 52)
-$btnStart.FlatAppearance.MouseDownBackColor = [Drawing.Color]::FromArgb(40, 33, 193, 52)
+$btnStart.FlatAppearance.MouseOverBackColor = [Drawing.Color]::FromArgb(25, 33, 193, 52)
+$btnStart.FlatAppearance.MouseDownBackColor = [Drawing.Color]::FromArgb(50, 33, 193, 52)
 $btnStart.Font = $fontBtn
 $btnStart.Cursor = [Windows.Forms.Cursors]::Hand
 $form.Controls.Add($btnStart)
@@ -1418,37 +1610,16 @@ $lblCopy.LinkBehavior = [Windows.Forms.LinkBehavior]::HoverUnderline
 $lblCopy.Add_LinkClicked({ Start-Process "http://cameraptor.com/voogie" })
 $form.Controls.Add($lblCopy)
 
-# -- Wire advanced toggle button -----------------------------------------------
-$script:AdvancedShiftControls = @($sep2, $lblSourceLbl, $btnBrowseFiles, $btnBrowseFolder,
-    $btnClear, $lblFileCount, $dropPanel, $btnStart, $progBg, $lblStatus, $logBox, $lblCopy)
-
+# -- Advanced panel: instant overlay (form height stays fixed) ----------------
+# pnlAdvanced overlays controls below it — no form resize, no shifting, no lag.
 $btnAdvanced.Add_Click({
     $script:AdvancedVisible = -not $script:AdvancedVisible
-    $delta = if ($script:AdvancedVisible) { $ADVANCED_HEIGHT } else { -$ADVANCED_HEIGHT }
-
-    # Screen height guard
+    $pnlAdvanced.Visible    = $script:AdvancedVisible
+    $btnAdvanced.Text       = $(if ($script:AdvancedVisible) { [char]0x25B2 } else { [char]0x25BC }) + "  ADVANCED"
     if ($script:AdvancedVisible) {
-        $screen = [Windows.Forms.Screen]::FromControl($form)
-        $newH   = $form.Height + $ADVANCED_HEIGHT
-        if ($newH -gt $screen.WorkingArea.Height) {
-            $script:AdvancedVisible = $false
-            [Windows.Forms.MessageBox]::Show(
-                "Screen is too small to show advanced panel.",
-                "Cannot expand", "OK", "Warning") | Out-Null
-            return
-        }
+        $pnlAdvanced.BringToFront()
+        try { $script:LogoPanel.BringToFront() } catch {}
     }
-
-    $pnlAdvanced.Visible = $script:AdvancedVisible
-    $btnAdvanced.Text = $(if ($script:AdvancedVisible) { [char]0x25B2 } else { [char]0x25BC }) + "  ADVANCED"
-
-    foreach ($ctrl in $script:AdvancedShiftControls) {
-        $ctrl.Location = [Drawing.Point]::new($ctrl.Location.X, $ctrl.Location.Y + $delta)
-    }
-
-    $form.ClientSize  = [Drawing.Size]::new(480, $form.ClientSize.Height + $delta)
-    $form.MinimumSize = [Drawing.Size]::new(496, $form.ClientSize.Height + ($form.Height - $form.ClientSize.Height))
-    $form.MaximumSize = $form.MinimumSize
 })
 
 # --- Events -------------------------------------------------------------------
@@ -1621,7 +1792,7 @@ $btnStart.Add_Click({
             -or $maxSizeMB -le 0) {
             [Windows.Forms.MessageBox]::Show("Invalid file size value.","Error","OK","Error") | Out-Null; return
         }
-        $format = if ($rbMOV.Checked) {"MOV"} else {"MP4"}
+        $format = if ($rbMOV.Checked) {"MOV"} elseif ($rbWebM.Checked) {"WebM"} else {"MP4"}
     }
 
     # Audio mode settings
@@ -1657,16 +1828,17 @@ $btnStart.Add_Click({
         $script:FFmpegPath = Install-FFmpegSilently $logBox $lblStatus $progress
 
         $progress.Style = "Continuous"
-        $btnStart.Text  = "C O M P R E S S"
+        $btnStart.Text  = "$([char]0x25B6)   C O M P R E S S"
 
         if (-not $script:FFmpegPath) {
             Write-Log $logBox "ERROR: FFmpeg could not be installed." "Red"
             Write-Log $logBox "Download manually: https://ffmpeg.org/download.html" "OrangeRed"
             $script:IsProcessing = $false
-            $btnStart.Text      = "C O M P R E S S"
-            $btnStart.BackColor = $clrAccent
-            $btnStart.FlatAppearance.MouseOverBackColor = $clrHover
-            $btnStart.FlatAppearance.MouseDownBackColor = $clrPressed
+            $btnStart.Text      = "$([char]0x25B6)   C O M P R E S S"
+            $btnStart.BackColor = $clrBg
+            $btnStart.FlatAppearance.BorderColor = $clrAccent
+            $btnStart.FlatAppearance.MouseOverBackColor = [Drawing.Color]::FromArgb(20, 33, 193, 52)
+            $btnStart.FlatAppearance.MouseDownBackColor = [Drawing.Color]::FromArgb(40, 33, 193, 52)
             $btnStart.Tag     = "start"
             $btnStart.Enabled = $true
             return
@@ -1708,8 +1880,8 @@ $btnStart.Add_Click({
             $answer = [Windows.Forms.MessageBox]::Show($warnMsg, "Size Limit Warning", "YesNo", "Warning")
             if ($answer -ne "Yes") {
                 $script:IsProcessing = $false
-                $btnStart.Text      = "C O M P R E S S"
-                $btnStart.BackColor = $clrAccent
+                $btnStart.Text      = "$([char]0x25B6)   C O M P R E S S"
+                $btnStart.BackColor = $clrBg
                 $btnStart.FlatAppearance.MouseOverBackColor = $clrHover
                 $btnStart.FlatAppearance.MouseDownBackColor = $clrPressed
                 $btnStart.Tag     = "start"
@@ -1808,10 +1980,11 @@ $btnStart.Add_Click({
 
     # Restore START button
     $script:IsProcessing = $false
-    $btnStart.Text      = "C O M P R E S S"
-    $btnStart.BackColor = $clrAccent
-    $btnStart.FlatAppearance.MouseOverBackColor = [Drawing.Color]::FromArgb(38, 182, 58)
-    $btnStart.FlatAppearance.MouseDownBackColor = [Drawing.Color]::FromArgb(18, 132, 34)
+    $btnStart.Text      = "$([char]0x25B6)   C O M P R E S S"
+    $btnStart.BackColor = $clrBg
+    $btnStart.FlatAppearance.BorderColor = $clrAccent
+    $btnStart.FlatAppearance.MouseOverBackColor = [Drawing.Color]::FromArgb(20, 33, 193, 52)
+    $btnStart.FlatAppearance.MouseDownBackColor = [Drawing.Color]::FromArgb(40, 33, 193, 52)
     $btnStart.Tag     = "start"
     $btnStart.Enabled = $true
 
@@ -1837,15 +2010,31 @@ $btnStart.Add_Click({
         # Restore button so the app stays usable
         $script:IsProcessing = $false
         try {
-            $btnStart.Text      = "C O M P R E S S"
-            $btnStart.BackColor = $clrAccent
-            $btnStart.FlatAppearance.MouseOverBackColor = $clrHover
-            $btnStart.FlatAppearance.MouseDownBackColor = $clrPressed
+            $btnStart.Text      = "$([char]0x25B6)   C O M P R E S S"
+            $btnStart.BackColor = $clrBg
+            $btnStart.FlatAppearance.BorderColor = $clrAccent
+            $btnStart.FlatAppearance.MouseOverBackColor = [Drawing.Color]::FromArgb(20, 33, 193, 52)
+            $btnStart.FlatAppearance.MouseDownBackColor = [Drawing.Color]::FromArgb(40, 33, 193, 52)
             $btnStart.Tag     = "start"
             $btnStart.Enabled = $true
             $lblStatus.Text   = "Error -- see log"
         } catch {}
     }
 })
+
+# Add logo overlay last (on top of all controls, click-through)
+if ($script:LogoPanel) {
+    $form.Controls.Add($script:LogoPanel)
+    $script:LogoPanel.BringToFront()
+}
+
+# Pre-warm shell32 so first Browse click is instant (shell namespace lazy-init)
+$warmTimer = New-Object Windows.Forms.Timer
+$warmTimer.Interval = 600
+$warmTimer.Add_Tick({
+    $warmTimer.Stop()
+    try { New-Object -ComObject Shell.Application | Out-Null } catch {}
+})
+$warmTimer.Start()
 
 $form.ShowDialog() | Out-Null
