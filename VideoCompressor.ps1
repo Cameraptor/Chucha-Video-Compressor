@@ -1599,7 +1599,7 @@ $y += 158
 
 # -- Copyright -----------------------------------------------------------------
 $lblCopy = New-Object Windows.Forms.LinkLabel
-$lblCopy.Text = "Made by Voogie  |  cameraptor.com/voogie"
+$lblCopy.Text = "Made in Luga by Voogie  |  cameraptor.com/voogie"
 $lblCopy.Font = $fontCopy
 $lblCopy.Location = [Drawing.Point]::new(24, $y)
 $lblCopy.AutoSize = $true

@@ -8,10 +8,7 @@
 [![Telegram](https://img.shields.io/badge/Telegram-Community-2CA5E0?logo=telegram)](https://t.me/voogieboogie)
 
 <div align="center">
-  <table><tr>
-    <td width="50%" bgcolor="#101010" align="center"><img src="assets/demo.gif" alt="Chucha Video Compressor demo" width="100%"></td>
-    <td width="50%" bgcolor="#101010"><img src="assets/screenshot.jpg" alt="Chucha Video Compressor UI" width="100%"></td>
-  </tr></table>
+  <img src="assets/screenshot.jpg" alt="Chucha Video Compressor UI" width="80%">
 </div>
 
 > **Compress any video to a precise target file size. GPU-accelerated. Drag-and-drop. Free.**
