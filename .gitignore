@@ -2,3 +2,14 @@ ffmpeg2pass*
 *.log
 *.log.mbtree
 Compressed/
+
+# AI workspace temp
+.ai/temp/*
+!.ai/temp/.gitkeep
+
+# Proof-loop skill repo (cloned submodule)
+.claude/skills/repo-task-proof-loop/
+
+# OS
+.DS_Store
+Thumbs.db

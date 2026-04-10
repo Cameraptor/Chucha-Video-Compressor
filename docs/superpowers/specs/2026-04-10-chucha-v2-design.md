@@ -5,6 +5,83 @@
 
 ---
 
+## 0. Brand Compliance (CAMERAPTOR Brand Guide)
+
+**Source:** `D:\Work\Assets\Projects\Business\CAMERAPTOR\CAMERAPTOR.COM\docs\BRAND.md`
+
+### Colors — corrections for v2
+
+| Token | Hex | RGB | v1 state | Action |
+|-------|-----|-----|----------|--------|
+| Raptor Green (CTA/accent) | `#21C134` | 33, 193, 52 | `#1CA42C` — WRONG | Fix in v2 |
+| Base Dark (bg) | `#101010` | 16, 16, 16 | `#101010` | ✓ correct |
+| Base Light (text) | `#F2E2E2` | 242, 226, 226 | `#F2E2E2` | ✓ correct |
+| Base Mid (borders/panels) | `#262626` | 38, 38, 38 | `#262626` | ✓ correct |
+| Muted text (secondary) | `#9a9590` | 154, 149, 144 | `#585858` — WRONG | Fix in v2: brand warm gray, not cool neutral |
+| Dim text (copyright) | `#4a4845` | 74, 72, 69 | `#373737` — WRONG | Fix in v2: brand dim, not neutral |
+| Input bg | `#161616` | 22, 22, 22 | `#161616` | ✓ correct (subtle depth) |
+| Log well bg | `#080808` | 8, 8, 8 | `#080808` | ✓ correct |
+| Drop zone bg | `#0A0A0A` | 10, 10, 10 | N/A | NEW in v2 |
+
+### Derived interactive states (from Raptor Green `#21C134`)
+
+| State | Hex | Derivation |
+|-------|-----|------------|
+| Hover | `#2AD43F` | +15% luminance from `#21C134` |
+| Pressed | `#1A9A2A` | -20% luminance from `#21C134` |
+| Disabled | `#145A1A` | 40% opacity equivalent |
+| Focus ring | `#21C134` | Same as accent, 2px border |
+
+### Secondary functional colors (not in brand palette — app-specific extensions)
+
+| Token | Hex | Use |
+|-------|-----|-----|
+| Stop/danger red | `#B42828` | STOP button, error states |
+| Warning orange | `#FF6E00` | Brand Orange — pre-flight warnings |
+| Info cyan | `#32BCB4` | Brand Tiffany — informational log lines |
+| Success | `#21C134` | Raptor Green — success states (brand-consistent) |
+
+Only green + dark greys + light text as primary palette. Secondary palette (orange/teal) used sparingly for functional states only — single-purpose utility.
+
+### Fonts — embedding plan
+
+| Font | Role | WinForms strategy |
+|------|------|-------------------|
+| Cormorant Garamond SemiBold | Display title "VIDEO COMPRESSOR" | Embed **TTF** (not WOFF2!) → extract to `%TEMP%\ChuCha_Fonts\` on startup, load via `PrivateFontCollection` |
+| Raleway Regular + Medium | UI labels, buttons, body | Same: embed **TTF** + `PrivateFontCollection` |
+| DM Mono Regular | Log box output | Fallback to Consolas (system) — acceptable |
+
+**CRITICAL: Use TTF, not WOFF2.** `PrivateFontCollection` in .NET/GDI+ requires TTF or OTF files. WOFF2 is a web format and cannot be loaded by WinForms.
+
+### Font embedding — implementation details
+
+**Embed only needed weights** (not variable fonts) to minimize PS1 bloat:
+- Cormorant Garamond SemiBold (600) — ~150KB TTF → ~200KB Base64
+- Raleway Regular (400) — ~100KB TTF → ~133KB Base64  
+- Raleway Medium (500) — ~100KB TTF → ~133KB Base64
+- Total: ~466KB Base64 added to PS1
+
+**Extraction path:** `%TEMP%\ChuCha_Fonts\` (subfolder, not root temp)
+- On startup: create folder, extract TTFs, load via PrivateFontCollection
+- On startup: also **clean stale files** (delete folder if exists from prior crash, recreate)
+- On process exit: delete folder via `Register-EngineEvent PowerShell.Exiting`
+
+Fallback if `PrivateFontCollection` load fails: Georgia (Cormorant stand-in), Segoe UI (Raleway stand-in), Consolas (DM Mono). Silent fallback, no error shown.
+
+### Type scale for v2 (4 steps, derived from Brand Guide)
+
+| Role | Font | Size | Weight | WinForms var |
+|------|------|------|--------|-------------|
+| Title "VIDEO COMPRESSOR" | Cormorant Garamond | 20pt | SemiBold (600) | `$fontTitle` |
+| Brand "C H U C H A" | Raleway | 9pt | Regular (400), tracking via spaces | `$fontBrand` |
+| Section labels (RESOLUTION, FORMAT) | Raleway | 8pt | Medium (500), ALL CAPS | `$fontLabel` |
+| Body / inputs / radios | Raleway | 9.5pt | Regular (400) | `$fontUI` |
+| Buttons (START, Browse) | Raleway | 11pt | Medium (500) | `$fontBtn` |
+| Log box | DM Mono / Consolas | 8.5pt | Regular | `$fontMono` |
+| Copyright | Raleway | 7.5pt | Regular (400) | `$fontCopy` |
+
+---
+
 ## 1. Current State (v1 baseline)
 
 **File:** `VideoCompressor.ps1` → compiled to `VideoCompressor.exe` via ps2exe
@@ -99,7 +176,7 @@ From SE screenshots: the "Choose files" area is a dark panel with a large drop z
 
 - Panel background: `#0A0A0A` (slightly darker than main bg `#101010`)
 - Border: 1px dashed `#2A2A2A` (subtle, not loud)
-- Height: 130px when showing 1–3 file names; fixed height with vertical scroll on overflow
+- Height: 150px (not 130 — extra 20px gives 6 visible file rows instead of 4); fixed height with vertical scroll on overflow
 - Icon: Unicode `↓` or `⬇` drawn in muted color centered when list is empty
 - Text when empty: `"Drop files or folder here"` in muted gray
 
@@ -130,8 +207,8 @@ Updates when user adds/removes sources.
 Drop zone Panel and the Form accept drag:
 - **Files dropped:** filter to video extensions only, add to list (or replace if folder was previously set)
 - **Folder dropped:** scan recursively, populate list with found video files, show "1 folder (N files)"
-- `DragEnter`: if contains FileDrop data → `DragDropEffects.Copy`, panel border flashes to accent color `#1CA42C`
-- `DragLeave` / `DragDrop`: border returns to `#2A2A2A`
+- `DragEnter`: if contains FileDrop data → `DragDropEffects.Copy`, panel border flashes to Raptor Green `#21C134`, panel bg lightens to `#111111`
+- `DragLeave` / `DragDrop`: border returns to `#2A2A2A`, bg returns to `#0A0A0A`
 
 ### 3.7 Internal state
 
@@ -465,21 +542,165 @@ Done: 3 successful  |  GPU: NVIDIA (h264_nvenc)  |  Threads: auto
 
 ---
 
-## 14. Implementation Order (for writing-plans)
+## 14. DPI Awareness (NEW — missing from v1)
+
+### 14.1 Problem
+
+WinForms apps on high-DPI displays (125%, 150%, 175%) render blurry or have misaligned controls. Windows tries to scale the app bitmap, causing fuzzy text and offset click targets. This affects Cormorant Garamond rendering especially — serif fonts look terrible when bitmap-scaled.
+
+### 14.2 Solution — SetProcessDPIAware at script start
+
+Add before any assembly loading (line 1 of script):
+
+```powershell
+Add-Type -TypeDefinition @'
+using System.Runtime.InteropServices;
+public class DpiAware {
+    [DllImport("user32.dll")] public static extern bool SetProcessDPIAware();
+}
+'@
+[DpiAware]::SetProcessDPIAware()
+```
+
+This tells Windows "I handle my own scaling" — WinForms then renders at native DPI with crisp fonts and correct control sizes.
+
+### 14.3 Screen height guard for Advanced panel
+
+Before expanding the Advanced panel, check if it fits:
+
+```powershell
+$screen = [Windows.Forms.Screen]::FromControl($form)
+$availableHeight = $screen.WorkingArea.Height
+$expandedHeight = 725 + $ADVANCED_HEIGHT  # 905px
+
+if ($expandedHeight -gt $availableHeight) {
+    # Don't expand — just show a scrollable inner panel instead
+    # Or: expand to maximum available, clip bottom
+}
+```
+
+This prevents the form from going off-screen on 768p laptops.
+
+---
+
+## 15. 8px Vertical Grid System (NEW — replacing inconsistent spacing)
+
+### 15.1 Problem
+
+v1 uses inconsistent spacings: 16, 17, 22, 24, 38, 46px. No visual rhythm. Brand Guide specifies 8px base grid (--space-1: 8px).
+
+### 15.2 Spacing tokens for WinForms
+
+| Token | Pixels | Use |
+|-------|--------|-----|
+| `$sp1` | 8 | Minimum gap (label to label) |
+| `$sp2` | 16 | Label to input, inner padding |
+| `$sp3` | 24 | Between controls in same group |
+| `$sp4` | 32 | Between radio options |
+| `$sp5` | 40 | Between sections |
+| `$sp6` | 48 | Between major blocks |
+
+### 15.3 Corrected vertical layout
+
+```
+Title "VIDEO COMPRESSOR":  Y = 40px from top    (was 37 — off-grid)
+Separator:                 Y = 80px from top    (was 82 — off-grid)
+First control row:         Y = 96px from top    (was 100 — 16px gap from separator)
+Label → Input gap:         16px                  (was 16 — ✓ correct)
+Row → Row gap:             48px                  (was 46 — off-grid)
+Radio → Radio gap:         32px                  (was 24 — too cramped)
+Section separator gap:     40px                  (was 38 — off-grid)
+Progress bar height:       6px                   (was 3 — too thin, barely visible)
+```
+
+### 15.4 Horizontal constants
+
+| Token | Pixels | Use |
+|-------|--------|-----|
+| Left margin | 24 | All content (existing — ✓ correct) |
+| Right margin | 24 | Symmetric (existing — ✓ correct) |
+| Content width | 432 | 480 - 24 - 24 (existing — ✓ correct) |
+| Button gap | 1 | Between toggle group buttons (was 4 — tighten to read as single component) |
+
+---
+
+## 16. Focus Indicators & Accessibility (NEW)
+
+### 16.1 Problem
+
+Dark theme swallows default Windows focus rectangles. Tab navigation has zero visual feedback. Muted text fails WCAG AA.
+
+### 16.2 Focus ring implementation
+
+For every interactive control (TextBox, Button, ComboBox, Radio):
+
+```powershell
+$control.Add_GotFocus({
+    $this.FlatAppearance.BorderColor = [Drawing.Color]::FromArgb(33, 193, 52)  # #21C134
+    $this.FlatAppearance.BorderSize = 2
+})
+$control.Add_LostFocus({
+    $this.FlatAppearance.BorderColor = [Drawing.Color]::FromArgb(38, 38, 38)  # #262626
+    $this.FlatAppearance.BorderSize = 1
+})
+```
+
+For TextBox controls (which don't have FlatAppearance):
+- Handle `GotFocus` / `LostFocus` by changing the control's `BackColor` to a slightly lighter shade (`#1A1A1A`) on focus, back to `#161616` on blur.
+
+### 16.3 Contrast fixes
+
+| Element | v1 (FAIL) | v2 (PASS) | Ratio on #101010 |
+|---------|-----------|-----------|-------------------|
+| Muted labels | `#585858` (3.3:1) | `#9a9590` (~6:1) | WCAG AA ✓ |
+| Copyright link | `#373737` (1.9:1) | `#4a4845` (~3.5:1) | WCAG AA large ✓ |
+| White on green CTA | `#FFFFFF` on `#1CA42C` (3.8:1) | `#FFFFFF` on `#21C134` (~3.5:1) | WCAG AA large text ✓ (11pt bold qualifies) |
+
+### 16.4 Keyboard shortcuts
+
+| Shortcut | Action |
+|----------|--------|
+| Tab / Shift+Tab | Navigate between controls (standard) |
+| Enter | Trigger START (when focused on START button) |
+| Escape | Trigger STOP (during compression) |
+| Ctrl+O | Open Browse files dialog |
+
+---
+
+## 17. Pre-Implementation — Deep Reference Study (AGENT TASK)
+
+**Before writing the implementation plan, a dedicated research agent must do a thorough study of Shutter Encoder.**
+
+The current spec is based on `settings.xml` dissection and two UI screenshots. That's not enough to fully understand the reference. The agent must:
+
+1. **Find the Shutter Encoder source code** — it's open source on GitHub (`paulpacifico/shutter-encoder`). Fetch the repo or key source files.
+2. **Study the full function list** — `settings.xml` shows 78 functions in `comboFonctions`. Catalog all of them, then identify which ones map to what we're building (compression, audio extraction).
+3. **Study how SE handles GPU** — find the actual Java code for `comboAccel`, `comboGPUDecoding`, `comboGPUFilter`. Map the exact FFmpeg flags it generates.
+4. **Study the audio extraction functions** — how SE maps MP3/AAC/WAV/FLAC selections to FFmpeg args. Bitrate presets, quality flags.
+5. **Catalog UI interaction patterns** — how SE's output section works (prefix/suffix/subfolder), how the batch queue functions, what the "Cancel" flow does, how "Open destination at end" is implemented.
+6. **Document findings in `docs/shutter-encoder-analysis.md`** with: function→FFmpeg arg mapping table, GPU flag mapping, audio format mapping, UI patterns worth stealing.
+
+This analysis enriches step details in the implementation plan that follows.
+
+---
+
+## 18. Implementation Order (for writing-plans)
 
 Each step is independently testable before moving to the next.
 
-1. **IFileOpenDialog Add-Type block** — add C# COM interop at top of script. Test PickFolder and PickFiles return correct paths. Fallback to FolderBrowserDialog on failure.
-2. **Drop zone UI** — replace TextBox+Browse with drop zone Panel + inner ListBox + counter label + Browse files/folder buttons. Wire Browse buttons to IFileOpenDialog. Wire DragEnter/DragDrop. Populate `$script:SourceFiles`. No encoding changes yet.
-3. **Mode toggle (video/audio)** — add MODE radio group. Wire show/hide of settings rows (resolution, size, format vs audio format, bitrate). No encoding yet.
-4. **Audio extraction encoding** — `Invoke-AudioExtract` function using `-vn -c:a libmp3lame/aac/pcm_s16le`. Wire to START button when in audio mode.
-5. **Advanced panel structure** — collapsible panel below settings, form resize logic. Wire all controls to `$script:` variables. No encoding changes yet.
-6. **Sound + open-folder** — post-batch block additions. Two lines. Test with a real encode.
-7. **Thread control** — add `-threads $Threads` to `Invoke-FFmpeg`. Default 0. Test with threads=4.
-8. **H.265 codec** — branch in `Compress-Video` for x265 pass flags + `libx265` encoder name. Test single file H.265 CPU encode.
-9. **GPU detection** — `Get-AvailableGPUEncoders` function on Form_Shown. Populates `$script:AvailableGPUEncoders`. Logs findings.
-10. **GPU encoding path** — branch in `Compress-Video` for 1-pass GPU encode per vendor, fallback on non-zero exit. Test with available GPU.
-11. **Scale algorithm** — `:flags=ALGO` appended to scale filter string from Advanced combo.
-12. **Wire all Advanced → Compress-Video params** — pass GpuMode, Codec, ScaleAlgo, Threads through to encoding functions.
-13. **Full end-to-end test** — folder mode + file mode + audio mode + GPU mode + H.265 + Advanced open. Fix any regressions.
-14. **Compile EXE** — run `ps2exe.ps1`, verify EXE launches, test on clean machine without FFmpeg (auto-install path).
+0. **[AGENT] Deep Shutter Encoder reference study** — see Section 14 above. Produces `docs/shutter-encoder-analysis.md`.
+1. **Brand corrections** — fix accent color `#1CA42C` → `#21C134`. Add Cormorant Garamond + Raleway font embedding via `PrivateFontCollection`. Fallback to Georgia/Segoe UI if load fails.
+2. **IFileOpenDialog Add-Type block** — add C# COM interop at top of script. Exposes `PickFolder(owner)` and `PickFiles(owner, filter)`. Fallback to FolderBrowserDialog on COM failure.
+3. **Drop zone UI** — replace old TextBox+Browse row with drop zone Panel (130px, dark, dashed border). Inner ListBox for file list. Counter label. Browse files + Browse folder + Clear buttons. Wire DragEnter/DragDrop for files and folders. Populate `$script:SourceFiles` + `$script:SourceFolderRoot`. Border flashes `#21C134` on valid drag hover.
+4. **Mode toggle (video/audio)** — add MODE row: `[ Compress video ]  [ Extract audio ]`. Wire show/hide of resolution/size/format rows vs audio format/bitrate rows. No encoding yet.
+5. **Audio extraction encoding** — `Invoke-AudioExtract` function: `-vn -c:a libmp3lame/aac/pcm_s16le -b:a NNNk`. Wire to START button in audio mode. Pre-flight: check audio stream exists.
+6. **Advanced panel structure** — collapsible panel with `▼ ADVANCED` toggle. Form height expansion. All controls (GPU, Codec, Scale, Threads, Sound, Open-folder) wired to `$script:` variables. No encoding changes yet.
+7. **Sound + open-folder** — add `[System.Media.SystemSounds]::Asterisk.Play()` + `Start-Process explorer.exe` to post-batch block. Gated on checkboxes.
+8. **Thread control** — add `-threads $script:Threads` to `Invoke-FFmpeg` args. Default 0.
+9. **H.265 codec** — branch in `Compress-Video`: x265 pass flags, `libx265` encoder name. Test single file CPU H.265 encode.
+10. **GPU detection** — `Get-AvailableGPUEncoders` on Form_Shown. Parse `ffmpeg -encoders` output. Log detected encoders.
+11. **GPU encoding path** — branch in `Compress-Video`: 1-pass GPU per vendor with correct flags (nvenc/amf/qsv). Auto-fallback to CPU on non-zero exit. Re-test same file CPU.
+12. **Scale algorithm** — append `:flags=$ScaleAlgo` to the scale vf filter string.
+13. **Wire all Advanced → encoding functions** — pass GpuMode, Codec, ScaleAlgo, Threads into `Compress-Video` and `Invoke-AudioExtract`.
+14. **Full end-to-end test** — folder mode + file mode + audio mode + GPU mode + H.265 + Advanced panel open. Fix regressions.
+15. **Compile EXE + push to GitHub** — `ps2exe.ps1`, verify EXE on clean machine (no FFmpeg). Push to `https://github.com/Cameraptor/Chucha-Video-Compressor`.
