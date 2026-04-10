@@ -1,9 +1,8 @@
 # Chucha Video Compressor
 
-[![GitHub](https://img.shields.io/badge/GitHub-Cameraptor-blue?logo=github)](https://github.com/Cameraptor/Chucha-Video-Compressor)
-[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Windows](https://img.shields.io/badge/Windows-10%2F11-0078D6?logo=windows)](https://github.com/Cameraptor/Chucha-Video-Compressor/releases)
 [![macOS](https://img.shields.io/badge/macOS-Intel%20%26%20Apple%20Silicon-000000?logo=apple)](https://github.com/Cameraptor/Chucha-Video-Compressor/releases)
+[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Free](https://img.shields.io/badge/Price-Free-brightgreen)]()
 [![Telegram](https://img.shields.io/badge/Telegram-Community-2CA5E0?logo=telegram)](https://t.me/voogieboogie)
 
@@ -12,277 +11,235 @@
 <td width="55%"><img src="assets/screenshot.jpg" width="100%" alt="Chucha UI"></td>
 </tr></table>
 
-> **Compress any video to a precise target file size. GPU-accelerated. Drag-and-drop. Free.**
+---
 
-Free, portable, single-file tool for **Windows** and **macOS**. Drop your files, set the MB limit, press Compress — done. Supports H.264, H.265, and WebM/VP9 output with hardware-accelerated encoding on NVIDIA, AMD, and Intel GPUs.
+## You have videos. You need them smaller. This should not be hard.
 
-**Download → double-click → drop files → done.** No installation, no accounts, no subscriptions.
+You shoot something. Client needs it under 2 MB. Or the upload form has a limit. Or you're sending 40 clips and email hates you.
 
-> **macOS version available** — same compression engine, terminal-based with native macOS dialogs. Identical encoding quality.
+So you open Adobe Media Encoder. Set the size limit. Export. Get a file that's 8× too big. Try again. Google the settings. Find a forum post from 2019. Give up and use HandBrake. Manually calculate the bitrate. Forget that video is 3 minutes long, not 2. Redo it.
 
-**Author:** Voogie | **Project:** CAMERAPTOR | [cameraptor.com/voogie](https://cameraptor.com/voogie)
+**There is no reason this should take more than 10 seconds.**
+
+Drop your files. Type the MB limit. Press Compress. Done.
+
+That's Chucha. Free, single file, no install.
 
 ---
 
-## What's New in v2
+## What it does
 
-The entire app was rebuilt from scratch. Here's what changed:
+**Chucha compresses any video to a precise target file size** using professional 2-pass encoding — the same technique used by Netflix, YouTube, and post-production studios. It calculates the exact bitrate needed for each file individually, runs two encoding passes to distribute quality where it matters, and hits your target size consistently.
+
+Not "roughly." Not "usually." Consistently.
+
+- Drop a whole folder → every video inside gets compressed, subfolder structure preserved
+- Set 1.5 MB → every output file comes out at ≤1.5 MB
+- GPU detected automatically → NVIDIA, AMD, Intel all work out of the box
+- First run takes ~30 seconds to auto-install FFmpeg. After that: instant.
+
+---
+
+## Why existing tools fail at this
+
+### Adobe Media Encoder — $55/month and it still gets the size wrong
+
+AME has a "Max File Size" setting. It does not work. This is not an opinion — it's a [recurring complaint on Adobe's own forum](https://community.adobe.com/t5/adobe-media-encoder-discussions/max-file-size-does-nothing/m-p/15178705) where users set a 4 MB limit and get 36 MB files. The setting exists. The encoder ignores it.
+
+Beyond that:
+
+- **2-pass encoding disables GPU** — your $800 graphics card sits idle
+- **2-pass is silently broken** — [documented cases](https://community.adobe.com/t5/adobe-media-encoder-discussions/media-encoder-only-does-1-pass-with-vbr-2-pass-settings-software-encoding/td-p/14743829) where AME performs 1 pass even when 2-pass is selected, with no error or warning
+- **Can't go below ~5 MB** — [users report being unable to get files below 5 MB](https://creativecow.net/forums/thread/cant-get-h264-files-smaller-than-5mb-out-of-media/) regardless of settings
+- **MainConcept encoder** — AME's H.264 encoder is ~20% less efficient than x264 at equivalent visual quality
+- **Batch = manual queue** — you add files one by one, configure each separately
+
+### DaVinci Resolve — the wrong tool for this job
+
+DaVinci is the best video editor on the planet. It is spectacular at color grading a feature film. It is not the tool you want when you have 30 clips that need to be under 2 MB each.
+
+To export one file to a target size: open project → import clip → create timeline → set in/out → open Deliver page → choose codec → manually calculate bitrate from target size (no automatic input) → render. Repeat 30 times.
+
+DaVinci has no target-size input field. No batch folder scan. No drag-and-drop queue that preserves directory structure. It's built for a different problem entirely.
+
+### HandBrake — good encoder, missing the point
+
+HandBrake uses x264 under the hood, so encoding quality is solid. But:
+
+- No target file size — you set bitrate manually, which means calculating it yourself per clip based on its runtime
+- No recursive batch — files are queued one at a time; no folder scan, no structure preservation
+- No GPU 2-pass — hardware encoding is single-pass only
+- No audio extraction
+
+### Chucha
+
+| | Adobe ME | DaVinci | HandBrake | **Chucha** |
+|---|---|---|---|---|
+| **Hits target size** | ❌ Broken | ❌ No input | ❌ Manual math | ✅ Always |
+| **Batch folder scan** | ❌ | ❌ | ❌ | ✅ Recursive |
+| **GPU acceleration** | ⚠️ Disables on 2-pass | ✅ | ⚠️ Single-pass only | ✅ NVENC · AMF · QSV |
+| **H.265 support** | ✅ | ✅ | ✅ | ✅ |
+| **WebM / VP9** | ❌ | ❌ | ❌ | ✅ |
+| **Audio extraction** | ❌ | ❌ | ❌ | ✅ MP3 · AAC · WAV |
+| **Drag and drop** | ⚠️ | ⚠️ | ⚠️ | ✅ Files + folders |
+| **Price** | $55/month | Free (complex) | Free | **Free** |
+| **Setup time** | 10+ min install | 10+ min install | 5 min install | **< 1 min** |
+
+---
+
+## What changed in v2
+
+The app was completely rebuilt. Here's the before/after:
 
 | | v1 | v2 |
 |---|---|---|
-| **Input** | Folder picker only (Windows 95-style dialog) | Drag-and-drop files and folders + modern Windows file picker |
+| **Input** | Folder picker only (Windows 95 dialog) | Drag-and-drop files + folders, modern Windows picker |
 | **Codecs** | H.264 only | H.264 · H.265 · WebM/VP9 |
-| **GPU** | CPU only | NVIDIA (NVENC) · AMD (AMF) · Intel (QSV) auto-detected |
-| **Resolution** | Up to 1920 | Up to 4K (3840px) |
-| **Audio** | Compression only | Compression + standalone audio extraction (MP3/AAC/WAV) |
-| **UI** | Basic flat controls | Redesigned — dark titlebar, brand fonts, chip selectors, drop zone |
-| **File picker** | FolderBrowserDialog (legacy) | IFileOpenDialog COM interop (native Windows Explorer UI) |
+| **GPU** | CPU only, always | NVIDIA · AMD · Intel — auto-detected |
+| **Resolution** | Up to 1920px | Up to 4K (3840px) |
+| **Audio** | Video compression only | + Audio extraction mode (MP3/AAC/WAV) |
+| **File picker** | Legacy FolderBrowserDialog | Native IFileOpenDialog (modern Windows Explorer UI) |
+| **UI** | Basic flat controls | Dark titlebar, brand fonts, chip selectors, drop zone |
+| **Formats** | MP4 · MOV | MP4 · MOV · WebM |
 
----
+Here's what each new thing actually does:
 
-## Key Features
+**GPU encoding** — NVIDIA, AMD, and Intel GPUs are detected automatically at launch. Hardware encoding is 5–10× faster than CPU for large files. Select Auto and forget about it, or lock to a specific GPU if you need to.
 
-### Drag-and-Drop Input
-Drop any mix of files and folders directly onto the app window. The tool recursively scans all dropped folders, finds every video, and mirrors the original folder structure in the output. No need to pick files one by one — drop the whole project folder and walk away.
+**Drag and drop** — drop any mix of files and folders directly onto the window. The app recursively finds every video, compresses each one, and mirrors the original folder structure in the output. Drop your entire project folder and walk away.
 
-### GPU Acceleration
-NVIDIA, AMD, and Intel GPUs are auto-detected at startup. Select Auto to let the app pick the best available encoder, or lock it to a specific GPU. Hardware encoding is 5–10x faster than CPU for large files.
+**H.264 · H.265 · WebM** — H.265 gives 40% better compression at the same visual quality. WebM/VP9 for open-format delivery. Switch between them with a single click.
 
-- **NVIDIA** — NVENC (h264_nvenc / hevc_nvenc)
-- **AMD** — AMF (h264_amf / hevc_amf)
-- **Intel** — QuickSync (h264_qsv / hevc_qsv)
-- **CPU** — libx264 / libx265 with 2-pass for maximum quality
+**Audio extraction** — toggle from video compression to audio extraction. Drop video files, pick MP3/AAC/WAV, get clean audio tracks out. One click to switch modes.
 
-### H.264 · H.265 · WebM
-- **H.264** — universal compatibility, 2-pass CBR via libx264
-- **H.265** — 40% better compression at the same quality, 2-pass via libx265
-- **WebM/VP9** — open format, libvpx-vp9 with libopus audio; 2-pass, no GPU (VP9 has no hardware encoder path)
+**4K support** — resolution selector up to 3840px. Portrait and landscape handled automatically.
 
-### Audio Extraction Mode
-Switch from video compression to audio extraction in one click. Select MP3, AAC, or WAV — the app strips the audio track from every file in the queue and saves it alongside the originals or in a subfolder.
+**Modern file pickers** — replaced the Windows 95-era folder browser with `IFileOpenDialog` — the same native dialog used by modern Windows apps.
 
-### Target File Size — Precisely
-Set the MB limit and the tool hits it. The bitrate is calculated per-file based on duration, codec efficiency, and audio budget. At low targets (1–3 MB), 2-pass encoding distributes bits where they matter — complex scenes get more, static scenes get less.
-
-```
-total_budget  = max_size × 0.92          (8% container overhead)
-audio_budget  = 96 kbps × duration
-video_bitrate = (total_budget − audio_budget) / duration
-```
-
-### Modern File Pickers
-The folder and file dialogs now use `IFileOpenDialog` COM interop — the same native Windows Explorer dialog used by modern applications. No more Windows 95-era FolderBrowserDialog.
-
-### Up to 4K
-Resolution selector covers 480 → 720 → 1080 → 1280 → 1920 → 2560 → 3840. Choose the max long-side dimension — portrait and landscape videos both handled correctly (`if(gte(iw,ih))` conditional scale filter).
-
-### Scale Algorithm
-Pick between bicubic (default), lanczos (sharper downscale), or bilinear (fastest) depending on your content and time budget.
-
-### Redesigned UI
-- Native Windows dark titlebar (DWM `DWMWA_USE_IMMERSIVE_DARK_MODE`)
-- Brand fonts — Cormorant Garamond + Raleway via embedded TTF
-- Format and codec chip selectors (MP4 / MOV / WebM · H.264 / H.265)
-- Drop zone with file list, count display, and individual file remove
-- CAMERAPTOR brand palette — #21C134 Raptor Green
-
----
-
-## Why Not Just Use [Adobe / DaVinci / Handbrake]?
-
-You have a folder of videos. You need them under 2 MB each. Here's what happens when you try the usual tools:
-
-### Adobe Media Encoder — $55/month, still broken
-
-AME uses MainConcept H.264 — a less efficient encoder than x264. Then it adds its own problems on top:
-
-- **"Max file size" literally does nothing** — [users report setting a 4 MB limit and getting 36 MB output](https://community.adobe.com/t5/adobe-media-encoder-discussions/max-file-size-does-nothing/m-p/15178705). The setting exists. It just doesn't work.
-- **2-pass disables GPU acceleration** — so your $800 GPU sits idle while your CPU slowly grinds through the encode
-- **2-pass is silently broken** — [documented cases](https://community.adobe.com/t5/adobe-media-encoder-discussions/media-encoder-only-does-1-pass-with-vbr-2-pass-settings-software-encoding/td-p/14743829) where AME performs 1-pass even when 2-pass is selected, with no warning
-- **Can't go below ~5 MB** — [users can't get H.264 files smaller than 5 MB](https://creativecow.net/forums/thread/cant-get-h264-files-smaller-than-5mb-out-of-media/) no matter how low they set the bitrate
-- **Batch means building a queue manually** — drag each file in one by one, set settings for each
-
-| | Adobe Media Encoder | Chucha |
-|---|---|---|
-| **Price** | $55/month | Free forever |
-| **Encoder** | MainConcept | x264 / x265 / VP9 |
-| **Hits target size** | Unreliable — overshoots 5–10× | Yes, consistently |
-| **2-pass quality** | Buggy, sometimes silently 1-pass | Always correct |
-| **Min file size** | ~5 MB floor | No floor |
-| **GPU** | Disables for 2-pass | NVIDIA · AMD · Intel, always on |
-| **Batch processing** | Manual queue per file | Drop a folder, done |
-
-### DaVinci Resolve — incredible tool, wrong job
-
-DaVinci is the best video editor on the planet. It's also 47 clicks to export one file to a target size. You need to: open a project, import clips, create a timeline, set in/out points, open Deliver page, configure codec settings, manually calculate bitrate from target size (no automatic calculation), render — repeat for every file. It's built for color grading feature films, not batch-compressing 30 clips from a shoot.
-
-No target-size input. No batch folder scan. No drag-and-drop queue. Just a very powerful tool solving a very different problem.
-
-### Handbrake — great encoder, missing the point
-
-Handbrake uses x264/x265, so the encoding quality is on par. But:
-
-- **No target file size** — you set bitrate manually, which means manually calculating it for each video based on its duration
-- **No recursive batch** — you queue files one at a time; it won't scan a folder and preserve structure
-- **No GPU 2-pass** — hardware encoding is single-pass only, no quality guarantee
-- **No audio extraction** — it's a video transcoder, not an audio extractor
-
-### What Chucha actually does
-
-Drop a folder. Set 2 MB. Press Compress. Every video in every subfolder comes out under 2 MB, with the original folder structure preserved, encoded with the best available hardware on your machine. That's the whole thing.
+**Redesigned UI** — dark titlebar via DWM, brand fonts (Cormorant Garamond + Raleway), chip selectors for format and codec, drop zone with live file list.
 
 ---
 
 ## Download
 
-### Windows
+### Windows — just get the EXE, nothing else needed
 
-1. Download **`VideoCompressor.exe`** from [Releases](https://github.com/Cameraptor/Chucha-Video-Compressor/releases)
-2. Put it anywhere — no installation needed
-3. Double-click to launch
+You don't need to download the repo. You don't need PowerShell or Python or anything else.
+**One file. Double-click. It works.**
 
-> FFmpeg is auto-detected. If not found, installed automatically.
+<div align="center">
+
+### [⬇ Download VideoCompressor.exe](https://github.com/Cameraptor/Chucha-Video-Compressor/releases)
+
+</div>
+
+Put it anywhere on your PC. Double-click. FFmpeg is auto-detected on first launch — if not found, it installs itself silently in the background. You don't touch anything.
 
 ### macOS
 
-1. Download **`chucha-compress.command`** from [Releases](https://github.com/Cameraptor/Chucha-Video-Compressor/releases)
-2. Double-click to launch in Terminal
-3. If blocked: right-click → Open, or `chmod +x chucha-compress.command`
+1. Download **`chucha-compress.command`** from [**Releases →**](https://github.com/Cameraptor/Chucha-Video-Compressor/releases)
+2. Double-click to open in Terminal
+3. Blocked by macOS? Right-click → Open, or `chmod +x chucha-compress.command`
 
-> FFmpeg auto-installed via Homebrew if missing.
+> Same compression engine, native macOS dialogs, FFmpeg auto-installed via Homebrew.
 
 ---
 
-## Usage
+## How to use it
 
-### Video Compression
+### Compress video
 
-1. Drop files or folders onto the drop zone — or use **Browse files** / **Browse folder**
-2. Set **Resolution** (max long side in px) and **Max Size** (target MB)
-3. Pick **Format** — MP4 / MOV / WebM
-4. Pick **Codec** — H.264 / H.265
-5. Choose **GPU** mode — Auto lets the app detect and use the best available
-6. Select **Output mode** — subfolder (preserves structure) or alongside original
-7. Click **COMPRESS**
+1. Drop files or folders onto the window — or hit **Browse files** / **Browse folder**
+2. Set your target size in MB
+3. Pick format (MP4 / MOV / WebM) and codec (H.264 / H.265)
+4. Choose GPU mode — Auto works for most cases
+5. Hit **COMPRESS**
 
-### Audio Extraction
+### Extract audio
 
-1. Click **Extract audio** at the top to switch modes
+1. Click **Extract audio** at the top
 2. Drop your video files
-3. Pick output format — MP3 / AAC / WAV
-4. Click **COMPRESS**
+3. Pick MP3, AAC, or WAV
+4. Hit **COMPRESS**
 
-> **Pre-flight check:** before encoding, the app warns you if any file physically can't fit in your size limit.
-
-> **STOP:** cancels at any time without corrupting output.
+Pre-flight check runs before encoding — if any file can't physically fit in your size limit, you'll see a warning before anything starts.
 
 ---
 
-## Parameters Reference
+## Settings reference
 
-| Parameter | Default | Options | Description |
-|-----------|---------|---------|-------------|
-| **Mode** | Compress video | Compress video · Extract audio | Video compression or audio-only extraction |
-| **Resolution** | 1280 px | 480 · 720 · 1080 · 1280 · 1920 · 2560 · 3840 | Max long-side dimension |
-| **Max Size** | 1.5 MB | Any | Target file size in MB |
-| **Format** | MP4 | MP4 · MOV · WebM | Output container |
-| **Codec** | H.264 | H.264 · H.265 | Video codec (H.265 = ~40% better compression) |
-| **GPU** | Auto | Auto · CPU · NVIDIA · AMD · Intel | Encoder selection |
-| **Scale algo** | bicubic | bicubic · lanczos · bilinear | Downscale filter quality |
-| **Output mode** | Subfolder | Subfolder · Alongside | Where output files are saved |
-| **Threads** | Auto | 1–32 | FFmpeg thread count |
+| Setting | Default | Options |
+|---------|---------|---------|
+| Mode | Compress video | Compress video · Extract audio |
+| Resolution | 1280 px | 480 · 720 · 1080 · 1280 · 1920 · 2560 · 3840 |
+| Max Size | 1.5 MB | Any value |
+| Format | MP4 | MP4 · MOV · WebM |
+| Codec | H.264 | H.264 · H.265 |
+| GPU | Auto | Auto · CPU · NVIDIA · AMD · Intel |
+| Scale | bicubic | bicubic · lanczos · bilinear |
+| Output | Subfolder | Subfolder · Alongside original |
 
 ---
 
-## Building from Source
+## How the size math works
 
-### Windows
+```
+total_budget  = target_mb × 0.92       — 8% reserved for container overhead
+audio_budget  = 96 kbps × duration     — audio at constant 96 kbps AAC
+video_bitrate = (total_budget − audio_budget) / duration
+```
+
+Each file is calculated independently. A 10-second clip and a 10-minute clip both hit the same MB target.
+
+---
+
+## Build from source
 
 ```powershell
+# Windows
 .\compile.ps1
+```
+
+```bash
+# macOS — no build needed
+chmod +x chucha-compress.command
 ```
 
 Requires: PowerShell 5.1+, `ps2exe.ps1` (included), `compressor.ico` (included).
 
-### macOS
-
-No build step — the `.command` script runs directly:
-
-```bash
-chmod +x chucha-compress.command
-./chucha-compress.command
-```
-
-### Source Files
-
-| File | Platform | Description |
-|------|----------|-------------|
-| `VideoCompressor.ps1` | Windows | WinForms GUI + all encoding logic (~2040 lines) |
-| `chucha-compress.command` | macOS | Terminal app — osascript dialogs + FFmpeg |
-| `ps2exe.ps1` | Windows | PS2EXE compiler (PS1 → standalone EXE) |
-| `compile.ps1` | Windows | One-click build script |
-| `compressor.ico` | Windows | Application icon |
-
 ---
 
-## Technical Notes
-
-- **2-pass CPU encoding** — pass 1 analyzes, pass 2 distributes bits. Temp log files written to `%TEMP%` with GUID names (no working directory dependency).
-- **mbtree=0** — x264's MB-tree disabled to prevent incomplete stats on certain clips.
-- **WebM container** — uses `-quality good -cpu-used 2` instead of `-preset`; no `-movflags` (not an MP4 container).
-- **H.265 2-pass** — uses `x265-params pass=1/pass=2` (not the standard `-pass` flag).
-- **GPU path** — single-pass constrained VBR. WebM/VP9 always falls back to CPU (no hardware VP9 encoder path in FFmpeg).
-- **Fonts** — Cormorant Garamond SemiBold and Raleway Regular embedded as Base64-encoded TTF, loaded via `PrivateFontCollection`. WOFF2 is not supported by GDI+.
-- **DPI** — native OS bitmap scaling preferred; `SetProcessDPIAware` intentionally disabled.
-
----
-
-## System Requirements
+## System requirements
 
 | | Windows | macOS |
 |---|---|---|
-| **OS** | Windows 10 / 11 (x64) | macOS 10.15+ (Intel & Apple Silicon) |
-| **RAM** | 4 GB | 4 GB |
-| **GPU** | Optional (NVIDIA/AMD/Intel for HW encode) | — |
-| **Runtime** | PowerShell 5.1 (built-in) | bash (built-in) |
-| **FFmpeg** | Auto-installed via winget | Auto-installed via Homebrew |
-
----
-
-## Troubleshooting
-
-| Issue | Solution |
-|-------|----------|
-| FFmpeg not found (Windows) | `winget install Gyan.FFmpeg` or place `ffmpeg.exe` next to the app |
-| FFmpeg not found (macOS) | `brew install ffmpeg` |
-| GPU encoder not detected | Switch to CPU mode manually; verify GPU drivers are current |
-| Output larger than target | Expected for very short videos at extreme size limits — pre-flight warning explains |
-| App won't close | Click STOP to cancel processing first |
-| Antivirus flags EXE | PS2EXE-compiled scripts are sometimes flagged as false positives. Add exception or run `.ps1` directly |
-| macOS "unidentified developer" | Right-click → Open, or `chmod +x chucha-compress.command` |
+| OS | Windows 10 / 11 | macOS 10.15+ |
+| Runtime | PowerShell 5.1 (built-in) | bash (built-in) |
+| GPU | Optional — NVIDIA/AMD/Intel for HW encode | — |
+| FFmpeg | Auto-installed | Auto-installed via Homebrew |
 
 ---
 
 ## Support
 
-- **Telegram:** [Join @voogieboogie](https://t.me/voogieboogie) — questions, feedback, feature requests
-- **Issues:** [GitHub Issues](https://github.com/Cameraptor/Chucha-Video-Compressor/issues)
-- **Website:** [cameraptor.com/voogie](https://cameraptor.com/voogie)
+**Telegram:** [Join @voogieboogie](https://t.me/voogieboogie) — questions, feedback, feature requests  
+**Issues:** [GitHub Issues](https://github.com/Cameraptor/Chucha-Video-Compressor/issues)  
+**Website:** [cameraptor.com/voogie](https://cameraptor.com/voogie)
 
 ---
 
 ## License
 
-MIT License — see [LICENSE](LICENSE) for details.
+MIT — free to use, modify, distribute.
 
 ---
 
 <div align="center">
 
-**Made by Voogie | CAMERAPTOR**
+**Made in Luga by Voogie | CAMERAPTOR**
 
 [![Telegram](https://img.shields.io/badge/💬_Join_Telegram_Community-2CA5E0?style=for-the-badge&logo=telegram&logoColor=white)](https://t.me/voogieboogie)
 
-⭐ Star the repo if it saves you time
+⭐ Star if it saved you time
 
 </div>
