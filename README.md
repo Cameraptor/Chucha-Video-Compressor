@@ -9,8 +9,8 @@
 
 <div align="center">
   <table><tr>
-    <td width="50%"><img src="assets/demo.gif" alt="Chucha Video Compressor demo" width="100%"></td>
-    <td width="50%"><img src="assets/screenshot.jpg" alt="Chucha Video Compressor UI" width="100%"></td>
+    <td width="50%" bgcolor="#101010" align="center"><img src="assets/demo.gif" alt="Chucha Video Compressor demo" width="100%"></td>
+    <td width="50%" bgcolor="#101010"><img src="assets/screenshot.jpg" alt="Chucha Video Compressor UI" width="100%"></td>
   </tr></table>
 </div>
 
