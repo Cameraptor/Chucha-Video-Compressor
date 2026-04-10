@@ -7,11 +7,10 @@
 [![Free](https://img.shields.io/badge/Price-Free-brightgreen)]()
 [![Telegram](https://img.shields.io/badge/Telegram-Community-2CA5E0?logo=telegram)](https://t.me/voogieboogie)
 
-<div align="center">
-  <img src="assets/screenshot.jpg" alt="Chucha Video Compressor UI" width="60%">
-  <br><br>
-  <img src="assets/demo.gif" alt="Chucha Video Compressor" width="40%">
-</div>
+<table width="100%" cellspacing="0" cellpadding="0"><tr>
+<td width="45%" bgcolor="#101010" align="center" valign="middle"><img src="assets/demo.gif" width="100%" alt="Chucha demo"></td>
+<td width="55%"><img src="assets/screenshot.jpg" width="100%" alt="Chucha UI"></td>
+</tr></table>
 
 > **Compress any video to a precise target file size. GPU-accelerated. Drag-and-drop. Free.**
 
@@ -89,25 +88,48 @@ Pick between bicubic (default), lanczos (sharper downscale), or bilinear (fastes
 
 ---
 
-## Why Not Adobe Media Encoder?
+## Why Not Just Use [Adobe / DaVinci / Handbrake]?
 
-Adobe Media Encoder defaults to VBR 1-pass encoding with its MainConcept H.264 encoder. Real-world problems:
+You have a folder of videos. You need them under 2 MB each. Here's what happens when you try the usual tools:
 
-- **2-pass disables GPU** — making large batches painfully slow
-- **Target file size is unreliable** — users report setting 4 MB and getting 36 MB output
-- **Can't go below ~5 MB** — hard floor that Chucha doesn't have
-- **MainConcept vs x264** — x264 is ~20% more efficient at equivalent quality
-- **Batch processing** — manual queue, one file at a time
+### Adobe Media Encoder — $55/month, still broken
 
-| | Adobe Media Encoder | Chucha Video Compressor |
+AME uses MainConcept H.264 — a less efficient encoder than x264. Then it adds its own problems on top:
+
+- **"Max file size" literally does nothing** — [users report setting a 4 MB limit and getting 36 MB output](https://community.adobe.com/t5/adobe-media-encoder-discussions/max-file-size-does-nothing/m-p/15178705). The setting exists. It just doesn't work.
+- **2-pass disables GPU acceleration** — so your $800 GPU sits idle while your CPU slowly grinds through the encode
+- **2-pass is silently broken** — [documented cases](https://community.adobe.com/t5/adobe-media-encoder-discussions/media-encoder-only-does-1-pass-with-vbr-2-pass-settings-software-encoding/td-p/14743829) where AME performs 1-pass even when 2-pass is selected, with no warning
+- **Can't go below ~5 MB** — [users can't get H.264 files smaller than 5 MB](https://creativecow.net/forums/thread/cant-get-h264-files-smaller-than-5mb-out-of-media/) no matter how low they set the bitrate
+- **Batch means building a queue manually** — drag each file in one by one, set settings for each
+
+| | Adobe Media Encoder | Chucha |
 |---|---|---|
-| **Encoder** | MainConcept (less efficient) | x264 / x265 / VP9 |
-| **2-Pass** | Buggy, disables GPU | Always reliable |
-| **Target size** | Unreliable, often overshoots 5–10× | Hits target consistently |
-| **GPU** | Limited | NVIDIA · AMD · Intel auto-detected |
-| **Formats** | MP4, MOV | MP4 · MOV · WebM |
-| **Batch** | Manual queue | Drag-and-drop folders, recursive scan |
-| **Price** | $55/month Creative Cloud | Free. MIT. Open source. |
+| **Price** | $55/month | Free forever |
+| **Encoder** | MainConcept | x264 / x265 / VP9 |
+| **Hits target size** | Unreliable — overshoots 5–10× | Yes, consistently |
+| **2-pass quality** | Buggy, sometimes silently 1-pass | Always correct |
+| **Min file size** | ~5 MB floor | No floor |
+| **GPU** | Disables for 2-pass | NVIDIA · AMD · Intel, always on |
+| **Batch processing** | Manual queue per file | Drop a folder, done |
+
+### DaVinci Resolve — incredible tool, wrong job
+
+DaVinci is the best video editor on the planet. It's also 47 clicks to export one file to a target size. You need to: open a project, import clips, create a timeline, set in/out points, open Deliver page, configure codec settings, manually calculate bitrate from target size (no automatic calculation), render — repeat for every file. It's built for color grading feature films, not batch-compressing 30 clips from a shoot.
+
+No target-size input. No batch folder scan. No drag-and-drop queue. Just a very powerful tool solving a very different problem.
+
+### Handbrake — great encoder, missing the point
+
+Handbrake uses x264/x265, so the encoding quality is on par. But:
+
+- **No target file size** — you set bitrate manually, which means manually calculating it for each video based on its duration
+- **No recursive batch** — you queue files one at a time; it won't scan a folder and preserve structure
+- **No GPU 2-pass** — hardware encoding is single-pass only, no quality guarantee
+- **No audio extraction** — it's a video transcoder, not an audio extractor
+
+### What Chucha actually does
+
+Drop a folder. Set 2 MB. Press Compress. Every video in every subfolder comes out under 2 MB, with the original folder structure preserved, encoded with the best available hardware on your machine. That's the whole thing.
 
 ---
 
