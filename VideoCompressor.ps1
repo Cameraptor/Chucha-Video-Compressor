@@ -743,7 +743,34 @@ $fontMono   = New-Object Drawing.Font("Consolas",  8.5)
 $fontCopy   = New-Object Drawing.Font($uiFontFamily, 7.5)
 
 # -- Form ----------------------------------------------------------------------
+try {
+    Add-Type -TypeDefinition @"
+    using System;
+    using System.Runtime.InteropServices;
+    public class Dwm {
+        [DllImport(""dwmapi.dll"", CharSet=CharSet.Unicode, SetLastError=true)]
+        public static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int attrValue, int attrSize);
+    }
+"@ -ErrorAction SilentlyContinue
+} catch {}
+
 $form = New-Object Windows.Forms.Form
+$form.Add_Load({
+    try {
+        $useImmersiveDarkMode = 1
+        [Dwm]::DwmSetWindowAttribute($form.Handle, 20, [ref]$useImmersiveDarkMode, 4) | Out-Null
+        [Dwm]::DwmSetWindowAttribute($form.Handle, 19, [ref]$useImmersiveDarkMode, 4) | Out-Null
+    } catch {}
+    
+    try {
+        $faviconPng = "D:\Work\Assets\Projects\Business\CAMERAPTOR\CAMERAPTOR.COM\public\favicon-32.png"
+        if (Test-Path $faviconPng) {
+            $bmp = New-Object Drawing.Bitmap($faviconPng)
+            $hIcon = $bmp.GetHicon()
+            $form.Icon = [Drawing.Icon]::FromHandle($hIcon)
+        }
+    } catch {}
+})
 $form.Text            = "Chucha Video Compressor"
 $form.ClientSize      = [Drawing.Size]::new(480, 856)
 $form.MinimumSize     = [Drawing.Size]::new(496, 895)
@@ -776,8 +803,18 @@ $form.Controls.Add($lblTitle)
 $sep1 = New-Object Windows.Forms.Panel
 $sep1.Location  = [Drawing.Point]::new(24, 82)
 $sep1.Size      = [Drawing.Size]::new(432, 1)
-$sep1.BackColor = $clrBorder
+$sep1.BackColor = $clrAccent
 $form.Controls.Add($sep1)
+
+$logoBox = New-Object Windows.Forms.PictureBox
+$logoBox.Location = [Drawing.Point]::new(260, 21)
+$logoBox.Size = [Drawing.Size]::new(200, 206)
+$logoBox.SizeMode = "Zoom"
+$logoBox.BackColor = [Drawing.Color]::Transparent
+try {
+    $logoBox.Image = [Drawing.Image]::FromFile("D:\Work\Assets\Projects\Business\CAMERAPTOR\CAMERAPTOR.COM\public\brand\glyph\glyph-vertical.png")
+} catch {}
+$form.Controls.Add($logoBox)
 
 # -- Settings ------------------------------------------------------------------
 $y = 100
@@ -789,7 +826,7 @@ $lblModeLbl.ForeColor = $clrMuted; $lblModeLbl.AutoSize = $true
 $lblModeLbl.Location = [Drawing.Point]::new(24, $y)
 $form.Controls.Add($lblModeLbl)
 
-$y += 16
+$y += 22
 
 function New-FmtBtn { param($Lbl, $X, $W=80, $On=$false)
     $rb = New-Object Windows.Forms.RadioButton
@@ -849,7 +886,7 @@ $lblSizeLbl.ForeColor = $clrMuted; $lblSizeLbl.AutoSize = $true
 $lblSizeLbl.Location = [Drawing.Point]::new(228, $vy)
 $videoSettingsPanel.Controls.Add($lblSizeLbl)
 
-$vy += 16
+$vy += 22
 
 $txtRes = New-Object Windows.Forms.TextBox
 $txtRes.Text = "1270"; $txtRes.Location = [Drawing.Point]::new(24, $vy)
@@ -882,7 +919,7 @@ $lblFmtLbl.ForeColor = $clrMuted; $lblFmtLbl.AutoSize = $true
 $lblFmtLbl.Location = [Drawing.Point]::new(24, $vy)
 $videoSettingsPanel.Controls.Add($lblFmtLbl)
 
-$vy += 16
+$vy += 22
 
 # Format as button-style radio group
 $fmtPanel = New-Object Windows.Forms.Panel
@@ -913,7 +950,7 @@ $lblAudioFmtLbl.ForeColor = $clrMuted; $lblAudioFmtLbl.AutoSize = $true
 $lblAudioFmtLbl.Location = [Drawing.Point]::new(24, $ay)
 $audioSettingsPanel.Controls.Add($lblAudioFmtLbl)
 
-$ay += 16
+$ay += 22
 
 $audioFmtPanel = New-Object Windows.Forms.Panel
 $audioFmtPanel.Location = [Drawing.Point]::new(24, $ay)
@@ -937,7 +974,7 @@ $lblAudioBrLbl.ForeColor = $clrMuted; $lblAudioBrLbl.AutoSize = $true
 $lblAudioBrLbl.Location = [Drawing.Point]::new(24, $ay)
 $audioSettingsPanel.Controls.Add($lblAudioBrLbl)
 
-$ay += 16
+$ay += 22
 
 $audioBrPanel = New-Object Windows.Forms.Panel
 $audioBrPanel.Location = [Drawing.Point]::new(24, $ay)
@@ -977,12 +1014,12 @@ $lblOutLbl.ForeColor = $clrMuted; $lblOutLbl.AutoSize = $true
 $lblOutLbl.Location = [Drawing.Point]::new(24, $y)
 $form.Controls.Add($lblOutLbl)
 
-$y += 16
+$y += 22
 
 $rbCompressed = New-Object Windows.Forms.RadioButton
 $rbCompressed.Text = "Save in Compressed/ subfolder  (preserves folder structure)"
 $rbCompressed.Location = [Drawing.Point]::new(24, $y)
-$rbCompressed.AutoSize = $true; $rbCompressed.FlatStyle = "Flat"; $rbCompressed.Checked = $true
+$rbCompressed.AutoSize = $true; $rbCompressed.FlatStyle = "Flat"; $rbCompressed.FlatAppearance.CheckedBackColor = $clrAccent; $rbCompressed.Checked = $true
 $rbCompressed.ForeColor = $clrText; $rbCompressed.Font = $fontSmall
 $form.Controls.Add($rbCompressed)
 
@@ -991,7 +1028,7 @@ $y += 24
 $rbSideBySide = New-Object Windows.Forms.RadioButton
 $rbSideBySide.Text = "Save alongside original  (_compressed suffix)"
 $rbSideBySide.Location = [Drawing.Point]::new(24, $y)
-$rbSideBySide.AutoSize = $true; $rbSideBySide.FlatStyle = "Flat"
+$rbSideBySide.AutoSize = $true; $rbSideBySide.FlatStyle = "Flat"; $rbSideBySide.FlatAppearance.CheckedBackColor = $clrAccent
 $rbSideBySide.ForeColor = $clrText; $rbSideBySide.Font = $fontSmall
 $form.Controls.Add($rbSideBySide)
 
@@ -1039,7 +1076,7 @@ $lblCodec.ForeColor = $clrMuted; $lblCodec.AutoSize = $true
 $lblCodec.Location = [Drawing.Point]::new(220, $ay)
 $pnlAdvanced.Controls.Add($lblCodec)
 
-$ay += 16
+$ay += 22
 
 $cmbGpu = New-Object Windows.Forms.ComboBox
 $cmbGpu.Location = [Drawing.Point]::new(0, $ay)
@@ -1055,14 +1092,14 @@ $pnlAdvanced.Controls.Add($cmbGpu)
 $rbH264 = New-Object Windows.Forms.RadioButton
 $rbH264.Text = "H.264"; $rbH264.Checked = $true
 $rbH264.Location = [Drawing.Point]::new(220, $ay)
-$rbH264.AutoSize = $true; $rbH264.FlatStyle = "Flat"
+$rbH264.AutoSize = $true; $rbH264.FlatStyle = "Flat"; $rbH264.FlatAppearance.CheckedBackColor = $clrAccent
 $rbH264.ForeColor = $clrText; $rbH264.Font = $fontSmall
 $pnlAdvanced.Controls.Add($rbH264)
 
 $rbH265 = New-Object Windows.Forms.RadioButton
 $rbH265.Text = "H.265"
 $rbH265.Location = [Drawing.Point]::new(310, $ay)
-$rbH265.AutoSize = $true; $rbH265.FlatStyle = "Flat"
+$rbH265.AutoSize = $true; $rbH265.FlatStyle = "Flat"; $rbH265.FlatAppearance.CheckedBackColor = $clrAccent
 $rbH265.ForeColor = $clrText; $rbH265.Font = $fontSmall
 $pnlAdvanced.Controls.Add($rbH265)
 
@@ -1081,7 +1118,7 @@ $lblThreads.ForeColor = $clrMuted; $lblThreads.AutoSize = $true
 $lblThreads.Location = [Drawing.Point]::new(220, $ay)
 $pnlAdvanced.Controls.Add($lblThreads)
 
-$ay += 16
+$ay += 22
 
 $cmbScale = New-Object Windows.Forms.ComboBox
 $cmbScale.Location = [Drawing.Point]::new(0, $ay)
@@ -1111,7 +1148,7 @@ $chkSound = New-Object Windows.Forms.CheckBox
 $chkSound.Text = "Play sound when done"
 $chkSound.Checked = $true
 $chkSound.Location = [Drawing.Point]::new(0, $ay)
-$chkSound.AutoSize = $true; $chkSound.FlatStyle = "Flat"
+$chkSound.AutoSize = $true; $chkSound.FlatStyle = "Flat"; $chkSound.FlatAppearance.CheckedBackColor = $clrAccent
 $chkSound.ForeColor = $clrText; $chkSound.Font = $fontSmall
 $pnlAdvanced.Controls.Add($chkSound)
 
@@ -1119,7 +1156,7 @@ $chkOpenFolder = New-Object Windows.Forms.CheckBox
 $chkOpenFolder.Text = "Open output folder when done"
 $chkOpenFolder.Checked = $false
 $chkOpenFolder.Location = [Drawing.Point]::new(220, $ay)
-$chkOpenFolder.AutoSize = $true; $chkOpenFolder.FlatStyle = "Flat"
+$chkOpenFolder.AutoSize = $true; $chkOpenFolder.FlatStyle = "Flat"; $chkOpenFolder.FlatAppearance.CheckedBackColor = $clrAccent
 $chkOpenFolder.ForeColor = $clrText; $chkOpenFolder.Font = $fontSmall
 $pnlAdvanced.Controls.Add($chkOpenFolder)
 
@@ -1147,10 +1184,10 @@ $script:AdvancedShiftControls = @()
 $sep2 = New-Object Windows.Forms.Panel
 $sep2.Location  = [Drawing.Point]::new(24, $y)
 $sep2.Size      = [Drawing.Size]::new(432, 1)
-$sep2.BackColor = $clrBorder
+$sep2.BackColor = $clrAccent
 $form.Controls.Add($sep2)
 
-$y += 16
+$y += 22
 
 # -- Drop zone ----------------------------------------------------------------
 $lblSourceLbl = New-Object Windows.Forms.Label
@@ -1159,7 +1196,7 @@ $lblSourceLbl.ForeColor = $clrMuted; $lblSourceLbl.AutoSize = $true
 $lblSourceLbl.Location = [Drawing.Point]::new(24, $y)
 $form.Controls.Add($lblSourceLbl)
 
-$y += 16
+$y += 22
 
 # Button row: Browse files | Browse folder | Clear | counter
 $btnBrowseFiles = New-Object Windows.Forms.Button
@@ -1225,7 +1262,7 @@ $lstFiles.ForeColor = $clrText
 $lstFiles.Font = $fontSmall
 $lstFiles.BorderStyle = "None"
 $lstFiles.IntegralHeight = $false
-$lstFiles.HorizontalScrollbar = $false
+$lstFiles.HorizontalScrollbar = $false; $lstFiles.DrawMode = "OwnerDrawFixed"; $lstFiles.ItemHeight = 28
 $lstFiles.DrawMode = "OwnerDrawFixed"
 $lstFiles.ItemHeight = 28
 $lstFiles.Add_DrawItem({
