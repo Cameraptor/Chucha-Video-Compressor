@@ -499,6 +499,7 @@ function Invoke-FFmpeg {
                 $cur = [TimeSpan]::FromSeconds($tUs / 1000000)
                 $tot = [TimeSpan]::FromSeconds($TotalDuration)
                 try { $StatusLabel.Text = "$PassLabel   {0:mm\:ss} / {1:mm\:ss}   ({2}%)" -f $cur, $tot, $pct } catch {}
+                try { $script:progress.Maximum = 100; $script:progress.Value = $pct } catch {}
             } else {
                 try { $StatusLabel.Text = "$PassLabel   starting..." } catch {}
             }
@@ -1944,7 +1945,9 @@ $btnStart.Add_Click({
             }
         }
 
-        $progress.Value = $num
+        # Restore bar to file-level tracking after within-file progress
+        $progress.Maximum = $files.Count
+        $progress.Value   = $num
         [Windows.Forms.Application]::DoEvents()
     }
 
