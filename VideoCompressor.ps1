@@ -1590,6 +1590,23 @@ $logBox.BorderStyle = "None"
 $logBox.ScrollBars = "Vertical"
 $form.Controls.Add($logBox)
 
+# -- Dark scrollbars (SetWindowTheme "DarkMode_Explorer") ----------------------
+try {
+Add-Type -TypeDefinition @"
+using System;
+using System.Runtime.InteropServices;
+public class UxTheme {
+    [DllImport("uxtheme.dll", CharSet = CharSet.Unicode)]
+    public static extern int SetWindowTheme(IntPtr hwnd, string pszSubAppName, string pszSubIdList);
+}
+"@ -ErrorAction SilentlyContinue -WarningAction SilentlyContinue
+} catch {}
+
+$form.Add_Shown({
+    try { [UxTheme]::SetWindowTheme($logBox.Handle,  "DarkMode_Explorer", $null) } catch {}
+    try { [UxTheme]::SetWindowTheme($lstFiles.Handle, "DarkMode_Explorer", $null) } catch {}
+})
+
 $y += 158
 
 # -- Copyright -----------------------------------------------------------------
