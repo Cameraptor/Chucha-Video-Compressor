@@ -499,7 +499,11 @@ function Invoke-FFmpeg {
                 $cur = [TimeSpan]::FromSeconds($tUs / 1000000)
                 $tot = [TimeSpan]::FromSeconds($TotalDuration)
                 try { $StatusLabel.Text = "$PassLabel   {0:mm\:ss} / {1:mm\:ss}   ({2}%)" -f $cur, $tot, $pct } catch {}
-                try { $script:progress.Maximum = 100; $script:progress.Value = $pct } catch {}
+                try {
+                    $script:progress.Maximum = 100
+                    $script:progress.Value   = $pct
+                    $script:progBg.Refresh()
+                } catch {}
             } else {
                 try { $StatusLabel.Text = "$PassLabel   starting..." } catch {}
             }
@@ -629,12 +633,14 @@ function Compress-Video {
         }
 
         try {
-            # Pass 1 -- analysis (no progress, fast)
+            # Pass 1 -- analysis with progress tracking
+            $progressFile1 = Join-Path $env:TEMP "ffprog_$([guid]::NewGuid().ToString('N').Substring(0,8)).txt"
             if ($StatusLabel) { $StatusLabel.Text = "Pass 1/2 -- analyzing..." }
-            $p1 = @("-y","-i",$File.FullName,"-vf",$scale,
+            $p1 = @("-y","-progress",$progressFile1,"-i",$File.FullName,"-vf",$scale,
                     "-c:v",$encoderName,"-b:v","${vbrKbps}k") + $extraParams + $passFlag1 +
                    @("-an","-f","null","NUL")
-            $exit1 = Invoke-FFmpeg $p1 -Threads $Threads
+            $exit1 = Invoke-FFmpeg $p1 -TotalDuration $duration -StatusLabel $StatusLabel -PassLabel "Pass 1/2" -ProgressFile $progressFile1 -Threads $Threads
+            Remove-Item $progressFile1 -Force -ErrorAction SilentlyContinue
             if ($exit1 -ne 0 -and -not $script:CancelRequested) {
                 return @{ Success=$false }
             }
